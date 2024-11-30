@@ -1,0 +1,111 @@
+---
+title: "30538 Problem Set 2: Parking Tickets Solutions"
+author: "Peter Ganong, Maggie Shi, and Ozzy Houck"
+date: "2024-09-30"
+format: 
+  pdf:
+    include-in-header: 
+       text: |
+         \usepackage{fvextra}
+         \DefineVerbatimEnvironment{Highlighting}{Verbatim}{breaklines,commandchars=\\\{\}}
+include-before-body:
+  text: |
+    \RecustomVerbatimEnvironment{verbatim}{Verbatim}{
+      showspaces = false,
+      showtabs = false,
+      breaksymbolleft={},
+      breaklines
+    }
+---
+
+
+```{python}
+import os
+import pandas as pd
+import altair as alt
+import unittest
+import time
+
+import warnings 
+warnings.filterwarnings('ignore')
+alt.renderers.enable("png")
+```
+
+```{python}
+folder_path = '/Users/katikaklinkaew/Documents/GitHub/Final Project Ideas'
+coc_path = os.path.join(folder_path, 'City-Owned_Land_Inventory_20241030.csv')
+df_city_land_inventory = pd.read_csv(coc_path)
+df_city_land_inventory.columns
+```
+
+```{python}
+property_status = df_city_land_inventory['Property Status'].value_counts().reset_index(name='count')
+print(property_status)
+
+property_status_dict = {
+    "Ownd by City": "Owned by City",
+    "Sold by City": "Sold",
+    "Sold By City": "Sold"
+}
+
+# Replace values and drop rows with None
+df_city_land_inventory['Property Status'] = df_city_land_inventory['Property Status'].replace(property_status_dict)
+
+df_city_land_inventory.shape[0]
+```
+```{python}
+# group all the inventry lands by community
+land_by_community = (df_city_land_inventory
+    .groupby(['Community Area Name'])
+    .agg(avg_land_value_2022=('Land Value (2022)', 'mean'),
+        avg_sqrft_area=('Square Footage - City Estimate', 'mean'),
+        counts = ('Community Area Name', 'size'))
+    .reset_index()
+)
+
+```
+
+
+```{python}
+df_city_land_inventory[df_city_land_inventory['Property Status']=='-']
+```
+
+```{python}
+df_city_land_inventory.groupby('Application Use').size()
+```
+
+```{python}
+import requests
+import io
+ccao_url = 'https://datacatalog.cookcountyil.gov/resource/nj4t-kc8j.csv'
+response = requests.get(ccao_url)
+if response.status_code == 200:
+    # Load the CSV content into a Pandas DataFrame
+    ccao_data = io.StringIO(response.text)
+    df_ccao = pd.read_csv(ccao_data)
+    # Display the first few rows
+    print(df_ccao.head())
+else:
+    print(f"Failed to fetch data: HTTP {response.status_code}")
+```
+
+
+
+```{python}
+ccao_path = os.path.join(folder_path, 'df_all.csv')
+df_ccao = pd.read_csv(ccao_path)
+df_ccao_chi = df_ccao[df_ccao['triad_code']==1]
+
+selected_columns = [
+    'pin', 'pin10', 'tax_year', 'class', 'township_name', 'township_code',
+    'neighborhood_code', 'tax_district_code', 'zip_code', 'longitude', 'latitude',
+    'chicago_community_area_num', 'chicago_community_area_name', 'enterprise_zone_num'
+]
+df_ccao_chi = df_ccao[selected_columns]
+```
+
+```{python}
+import geopandas as gpd
+neighborhood_file_path = os.path.join(folder_path, ' Neighborhoods/geo_export_c57c5a15-0ef0-4261-8464-1095ce4aaa0a.shp')
+neighborhood_shp = gpd.read_file(neighborhood_file_path)
+```
