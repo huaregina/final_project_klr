@@ -1,0 +1,48 @@
+---
+title: "title"
+author: "author"
+date: "date"
+format: 
+  pdf:
+    include-in-header: 
+       text: |
+         \usepackage{fvextra}
+         \DefineVerbatimEnvironment{Highlighting}{Verbatim}{breaklines,commandchars=\\\{\}}
+include-before-body:
+  text: |
+    \RecustomVerbatimEnvironment{verbatim}{Verbatim}{
+      showspaces = false,
+      showtabs = false,
+      breaksymbolleft={},
+      breaklines
+    }
+output:
+  echo: false
+  eval: false
+---
+
+## Background
+
+## Data
+
+\newpage
+
+```{python}
+import pandas as pd
+import altair as alt
+import time
+import requests
+import datetime as dt
+
+import warnings 
+warnings.filterwarnings('ignore')
+alt.renderers.enable("png")
+```
+
+
+## Data Cleaning and Benchmarking
+
+1. We want to check if the data on City-owned land from the City of Chicago is a reasonable subset of the universe spatial data from the Cook County Assessor’s Office.
+
+
+
