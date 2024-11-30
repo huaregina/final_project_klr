@@ -49,6 +49,7 @@ df = pd.read_csv('/Users/aa/Documents/GitHub/final_project_klr/data/df_all.csv')
 ```
 
 Chicago zipcode start with '606' except Riverdale: 60827 and Galewood: 60707
+
 ```{python}
 df['zip_code'] = df['zip_code'].astype(str)
 
@@ -57,4 +58,73 @@ filtered_df = df[
     (df['zip_code'] == '60827') |
     (df['zip_code'] == '60707')
 ]
+```
+
+```{python}
+df_ccao = filtered_df[filtered_df['class'].str.startswith('1')]
+```
+
+```{python}
+df_coc = pd.read_csv('/Users/aa/Documents/GitHub/final_project_klr/data/df_city_owned.csv')
+```
+
+```{python}
+df_coc = df_coc[df_coc['Zip Code'] != 0]
+df_coc = df_coc[df_coc['Property Status'] == 'Owned by City']
+```
+
+The 'pin' column in df_coc is not in the same format as that in ccao.
+
+```{python}
+df_coc['PIN'] = df_coc['PIN'].str.replace('-','')
+df_ccao['pin'] = df_ccao['pin'].astype(str)
+
+set(df_coc['PIN']).issubset(set(df_ccao['pin']))
+```
+
+To check if df_coc is a subset of df_ccao, we will create buffers around the elements of df_ccao and verify if all elements of df_coc fall within these buffers.
+
+```{python}
+import requests
+
+# download path
+api = 'https://data.cityofchicago.org/api/geospatial/bbvz-uum9?method=export&format=GeoJSON'
+response = requests.get(api)
+
+# save path
+save_path = '/Users/aa/Documents/GitHub/final_project_klr/data/chicago-boundaries.geojson'
+
+with open(save_path, 'wb') as f:
+  f.write(response.content)
+```
+
+```{python}
+import json
+
+with open(save_path) as f: 
+  chicago_geojson = json.load(f)
+
+geo_data = alt.Data(values=chicago_geojson["features"])
+```
+
+```{python}
+map_layer = alt.Chart(geo_data).mark_geoshape(
+    fill='lightgray',
+    stroke='white'
+).project(
+    type='identity',
+    reflectY=True
+)
+```
+
+```{python}
+alt.Chart(filtered_df).mark_point(filled=True, opacity=0.7).encode(
+    x=alt.X('longitude:Q', scale=alt.Scale(
+        domain=[-87.92, -87.56]), title='Longitude'),
+    y=alt.Y('latitude:Q', scale=alt.Scale(
+        domain=[41.66, 42.02]), title='Latitude'),
+    size=alt.Size('counts:Q', title='Count')
+).properties(
+    title="Geometry of 'Jam - Heavy Traffic' Alerts (Top 10 Locations)"
+)
 ```
