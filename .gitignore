@@ -1,0 +1,40 @@
+# Ignore all .DS_Store files recursively
+**/.DS_Store
+
+# Virtual environments
+venv/
+env/
+.env/
+
+# Byte-compiled Python files
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Logs and temporary files
+*.log
+*.tmp
+*.bak
+
+# macOS system files
+**/.DS_Store
+**/.AppleDouble
+**/.LSOverride
+.DS_Store?
+.Spotlight-V100
+.Trashes
+._*
+
+# GitHub or CI configuration artifacts
+.github/workflows/*.log
+**/.pytest_cache
+
+# Editors and IDEs
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-projectx
