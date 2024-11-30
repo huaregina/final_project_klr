@@ -44,5 +44,17 @@ alt.renderers.enable("png")
 
 1. We want to check if the data on City-owned land from the City of Chicago is a reasonable subset of the universe spatial data from the Cook County Assessor’s Office.
 
+```{python}
+df = pd.read_csv('/Users/aa/Documents/GitHub/final_project_klr/data/df_all.csv')
+```
 
+Chicago zipcode start with '606' except Riverdale: 60827 and Galewood: 60707
+```{python}
+df['zip_code'] = df['zip_code'].astype(str)
 
+filtered_df = df[
+    (df['zip_code'].str.startswith('606')) |
+    (df['zip_code'] == '60827') |
+    (df['zip_code'] == '60707')
+]
+```
