@@ -239,7 +239,7 @@ chro_map = (base_map + choropleth).configure_view(
 
 
 # 5 Combine the chropleth map and scatter plot
-
+## Choice1: By Binned coordinates
 ```{python}
 # Ensure scatter data is in the correct format
 scatter_data = coordinate_counts.copy()
@@ -262,7 +262,7 @@ combined_map
 
 ```
 
-
+## Choice2: By Community areas
 ```{python}
 # Combine the choropleth map and scatter layers
 combined_map = (chro_map + scatter2).properties(
