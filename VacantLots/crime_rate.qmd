@@ -241,11 +241,6 @@ chro_map = (base_map + choropleth).configure_view(
 # 5 Combine the chropleth map and scatter plot
 ## Choice1: By Binned coordinates
 ```{python}
-# Ensure scatter data is in the correct format
-scatter_data = coordinate_counts.copy()
-scatter_data = scatter_data.rename(columns={'Binned_Latitude': 'Latitude', 'Binned_Longitude': 'Longitude'})
-```
-```{python}
 # Combine the choropleth map and scatter layers
 combined_map1 = (chro_map + scatter).properties(
     title={
