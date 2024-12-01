@@ -247,7 +247,7 @@ scatter_data = scatter_data.rename(columns={'Binned_Latitude': 'Latitude', 'Binn
 ```
 ```{python}
 # Combine the choropleth map and scatter layers
-combined_map = (chro_map + scatter).properties(
+combined_map1 = (chro_map + scatter).properties(
     title={
         'text': 'Crime Counts and Vacant Lands by Community Area',
         'fontSize': 16,
@@ -258,14 +258,14 @@ combined_map = (chro_map + scatter).properties(
 )
 
 # Display the combined map
-combined_map
+combined_map1
 
 ```
 
 ## Choice2: By Community areas
 ```{python}
 # Combine the choropleth map and scatter layers
-combined_map = (chro_map + scatter2).properties(
+combined_map2 = (chro_map + scatter2).properties(
     title={
         'text': 'Crime Counts and Vacant Lands by Community Area',
         'fontSize': 16,
@@ -276,7 +276,7 @@ combined_map = (chro_map + scatter2).properties(
 )
 
 # Display the combined map
-combined_map
+combined_map2
 
 ```
 
