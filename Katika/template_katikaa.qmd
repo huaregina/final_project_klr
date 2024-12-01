@@ -1,0 +1,274 @@
+---
+title: "30538 Problem Set 2: Parking Tickets Solutions"
+author: "Peter Ganong, Maggie Shi, and Ozzy Houck"
+date: "2024-09-30"
+format: 
+  pdf:
+    include-in-header: 
+       text: |
+         \usepackage{fvextra}
+         \DefineVerbatimEnvironment{Highlighting}{Verbatim}{breaklines,commandchars=\\\{\}}
+include-before-body:
+  text: |
+    \RecustomVerbatimEnvironment{verbatim}{Verbatim}{
+      showspaces = false,
+      showtabs = false,
+      breaksymbolleft={},
+      breaklines
+    }
+---
+
+
+```{python}
+#| echo: false
+import os
+import pandas as pd
+import altair as alt
+import unittest
+import time
+import datetime as dt
+import geopandas as gpd
+from shapely import wkt
+from shapely.geometry import Point
+import numpy as np
+
+import warnings 
+warnings.filterwarnings('ignore')
+alt.renderers.enable("png")
+alt.data_transformers.disable_max_rows() 
+```
+
+```{python}
+data_path = '/Users/katikaklinkaew/Documents/GitHub/final_project_klr/data/'
+coc_path = os.path.join(data_path, 'df_city_owned.csv')
+df_coc = pd.read_csv(coc_path)
+
+```
+
+```{python}
+property_status = df_coc['Property Status'].value_counts().reset_index(name='count')
+print(property_status)
+
+property_status_dict = {
+    "Ownd by City": "Owned by City",
+    "Sold by City": "Sold",
+    "Sold By City": "Sold"
+}
+
+# Replace values and filter data to vacant lands owned by city where zip code is not 0 or missing
+df_coc['Property Status'] = df_coc['Property Status'].replace(property_status_dict)
+df_coc = df_coc[df_coc['Zip Code'] != 0]
+df_coc = df_coc[df_coc['Property Status'] == 'Owned by City']
+df_coc = df_coc.dropna(subset=['Zip Code'])
+
+
+```
+```{python}
+# group all the inventry lands by community and inspect
+vacant_land_by_community = (df_coc
+    .groupby(['Community Area Name'])
+    .agg(counts = ('Community Area Name', 'size'))
+    .reset_index()
+)
+print(vacant_land_by_community.sort_values(by='counts',axis=0, ascending=False))
+```
+
+
+We find almost all the pin codes from the City of Chicago data is not in the Cook County data so we will combine the two dataset.
+
+```{python}
+# read in vacant lots from ccao
+ccao_path = os.path.join(data_path, 'data_ccao.csv')
+df_ccao = pd.read_csv(ccao_path)
+```
+
+```{python}
+# The 'pin' column in df_coc is not in the same format as that in ccao
+df_coc['PIN'] = df_coc['PIN'].str.replace('-','')
+df_ccao['pin'] = df_ccao['pin'].astype(str)
+
+# Find the set of PINs in df_coc but not in df_ccao
+missing_pins = set(df_coc['PIN']) - set(df_ccao['pin'])
+
+# Count the number of missing PINs
+missing_count = len(missing_pins)
+
+print(f"Number of PINs in df_coc['PIN'] not in df_ccao['pin']: {missing_count}")
+```
+
+```{python}
+selected_columns_coc = [
+    'PIN','Community Area Number', 'Community Area Name', 'Zip Code', 'Latitude', 'Longitude'
+]
+
+df_coc = df_coc[selected_columns_coc]
+
+selected_columns_ccao = [
+    'pin','chicago_community_area_num', 'chicago_community_area_name', 'zip_code', 'latitude', 'longitude'
+]
+
+df_ccao = df_ccao[selected_columns_ccao]
+```
+
+```{python}
+# rename some of the columns
+df_coc = df_coc.rename(columns={
+    'PIN': 'pin',
+    'Community Area Number': 'chicago_community_area_num',
+    'Community Area Name': 'chicago_community_area_name',
+    'Zip Code': 'zip_code',
+    'Latitude': 'latitude',
+    'Longitude': 'longitude'
+})
+```
+
+```{python}
+df_coc = df_coc.dropna()
+
+df_coc['type'] = 'City-Owned'
+df_ccao['type'] = 'Private'
+```
+
+```{python}
+df_vacant = pd.concat([df_ccao, df_coc], axis=0).drop_duplicates(subset='pin')
+```
+
+```{python}
+df_vacant.head()
+```
+
+
+```{python}
+# Remove rows with missing or zero coordinates
+df_vacant = df_vacant[(df_vacant['latitude'].notna()) & (df_vacant['longitude'].notna()) & (df_vacant['latitude'] != 0) & (df_vacant['longitude'] != 0)]
+
+# Check the missing rate
+# print(df2[['Latitude', 'Longitude']].isna().sum())  # no missing data
+```
+
+# Crime rate and vacant lots by zip codes 
+
+```{python}
+# read Chicago zip code shapefile
+zip_shp_path = os.path.join(data_path, 'Zip Codes/geo_export.shp')
+gdf_zip = gpd.read_file(zip_shp_path)
+# read crime data for 2023
+crime_2023_path = os.path.join(data_path, 'Crimes_2023.csv')
+df_crime = pd.read_csv(crime_2023_path)
+
+pop_path = os.path.join(data_path, 'Chicago_Population_Counts.csv')
+df_pop = pd.read_csv(pop_path)
+
+```
+
+
+```{python}
+#### identify the zip code for each crime from its latitude&longitude
+
+# drop rows with missing locations
+df_crime = df_crime.dropna(subset=['Latitude', 'Longitude'])
+
+# Create a 'geometry' column by applying Point to each latitude and longitude
+df_crime['geometry'] = df_crime.apply(lambda row: Point(row['Longitude'], row['Latitude']), axis=1)
+
+# convert df_crime to a geodataframe
+gdf_crime = gpd.GeoDataFrame(df_crime, geometry='geometry', crs='EPSG:4326')
+
+# Ensure zip code GeoDataFrame is also in the same crs
+gdf_zip = gdf_zip.to_crs('EPSG:4326')
+
+# Spatial join to assign zip codes to crimes
+gdf_crime = gpd.sjoin(gdf_crime, gdf_zip, how='left', predicate='within')
+
+gdf_crime.head()
+```
+
+```{python}
+crime_count_zip = gdf_crime.groupby('zip').size().reset_index(name='crime_count')
+crime_count_zip
+```
+
+```{python}
+# Merge the crime count data with the population data (2021) using the correct column
+df_pop_2021 = df_pop[df_pop['Year']==2021]
+df_crime_rate = crime_count_zip.merge(df_pop_2021[['Geography','Population - Total']], left_on='zip', right_on='Geography')
+df_crime_rate
+```
+
+```{python}
+## there is no population data on zip code 60666 --> might have to try the full census data
+df_pop[df_pop['Geography']==60666]
+```
+
+```{python}
+# rename population column
+df_crime_rate = df_crime_rate.rename(columns={'Population - Total': 'population'})
+
+# Drop the 'Geography' column
+df_crime_rate = df_crime_rate.drop(columns=['Geography'])
+
+# Calculate the crime rate per 100 people
+df_crime_rate['crime_rate'] = df_crime_rate['crime_count'] / df_crime_rate['population'] * 1000
+
+# replace inf with na
+df_crime_rate['crime_rate'] = df_crime_rate['crime_rate'].replace([float('inf'), -float('inf')], float('nan'))
+
+df_crime_rate
+```
+
+```{python}
+# merge with zip shapefile
+gdf_crime_rate = gdf_zip.merge(df_crime_rate, on='zip', how='left')
+# Fill missing crime rate with 0
+gdf_crime_rate['crime_rate'] = gdf_crime_rate['crime_rate'].fillna(0).astype(int)
+
+crime_rate_map = alt.Chart(gdf_crime_rate
+).mark_geoshape(
+  # Default fill for all areas
+    stroke='white',
+    strokeWidth=0.5
+).encode(
+    color=alt.Color('crime_rate:Q', 
+                    scale=alt.Scale(range=["lightgray", "red"]),  
+                    title='Crime rate per 1,000 population'),
+    tooltip=['zip:N', 'crime_rate:Q']
+).project(
+    type='albersUsa'  
+).properties(
+    width=600,
+    height=400,
+)
+
+crime_rate_map
+
+```
+
+```{python}
+scatter_plot = alt.Chart(df_vacant).mark_point(size=0.3,filled=True, color='blue').encode(
+    longitude='longitude',
+    latitude='latitude'
+).properties(
+    title='Vacant Land Locations'
+)
+
+scatter_plot.show()
+```
+
+$
+```{python}
+# Combine the choropleth map and scatter layers
+combined_map = (crime_rate_map + scatter_plot).properties(
+    title={
+        'text': 'Crime rate by zip code and Vacant Lands',
+        'fontSize': 16,
+        'anchor': 'middle'
+    }
+).configure_view(
+    stroke=None  # Remove gridlines
+)
+
+# Display the combined map
+combined_map
+```
+
+

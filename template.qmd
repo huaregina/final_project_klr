@@ -42,7 +42,105 @@ alt.renderers.enable("png")
 
 ## Data Cleaning and Benchmarking
 
-1. We want to check if the data on City-owned land from the City of Chicago is a reasonable subset of the universe spatial data from the Cook County Assessor’s Office.
+1. We collected data on City-owned land from the City of Chicago and property data from the Cook County Assessor’s Office, followed by initial data cleaning to prepare the datasets for analysis.
 
+```{python}
+# | eval: false
 
+# load the property data in cook county
+data_cook_county = pd.read_csv('/Users/aa/Documents/Q4/data_cook_county.csv')
 
+# filter only data in Chicago
+# Chicago zipcode start with '606' except Riverdale(60827) and Galewood(60707)
+data_cook_county['zip_code'] = data_cook_county['zip_code'].astype(str)
+
+data_chi = data_cook_county[
+    (data_cook_county['zip_code'].str.startswith('606')) |
+    (data_cook_county['zip_code'] == '60827') |
+    (data_cook_county['zip_code'] == '60707')
+]
+
+# filter only data of vacant lands (property class code started with 1)
+data_chi_vacant = data_chi[data_chi['class'].str.startswith('1')]
+
+# remove unneccessary columns
+selected_columns = [
+    'pin', 'pin10', 'tax_year', 'class', 'township_name', 'township_code',
+    'neighborhood_code', 'tax_district_code', 'zip_code', 'longitude', 'latitude',
+    'chicago_community_area_num', 'chicago_community_area_name', 'enterprise_zone_num'
+]
+
+data_chi_vacant = data_chi_vacant[selected_columns]
+
+# save it to the repo
+data_chi_vacant.to_csv('/Users/aa/Documents/GitHub/final_project_klr/data/data_ccao', index=False)
+```
+
+```{python}
+# read in the data
+df_ccao = pd.read_csv('/Users/aa/Documents/GitHub/final_project_klr/data/data_ccao')
+df_coc = pd.read_csv('/Users/aa/Documents/GitHub/final_project_klr/data/df_city_owned.csv')
+```
+
+```{python}
+df_coc = df_coc[df_coc['Zip Code'] != 0]
+df_coc = df_coc[df_coc['Property Status'] == 'Owned by City']
+df_coc = df_coc.dropna(subset=['Zip Code'])
+```
+
+We find almost all the pin codes from the City of Chicago data is not in the Cook County data so we will combine the two dataset.
+
+```{python}
+# The 'pin' column in df_coc is not in the same format as that in ccao
+df_coc['PIN'] = df_coc['PIN'].str.replace('-','')
+df_ccao['pin'] = df_ccao['pin'].astype(str)
+
+# Find the set of PINs in df_coc but not in df_ccao
+missing_pins = set(df_coc['PIN']) - set(df_ccao['pin'])
+
+# Count the number of missing PINs
+missing_count = len(missing_pins)
+
+print(f"Number of PINs in df_coc['PIN'] not in df_ccao['pin']: {missing_count}")
+```
+
+```{python}
+selected_columns_coc = [
+    'PIN','Community Area Number', 'Community Area Name', 'Zip Code', 'Latitude', 'Longitude'
+]
+
+df_coc = df_coc[selected_columns_coc]
+
+selected_columns_ccao = [
+    'pin','chicago_community_area_num', 'chicago_community_area_name', 'zip_code', 'latitude', 'longitude'
+]
+
+df_ccao = df_ccao[selected_columns_ccao]
+```
+
+```{python}
+# rename some of the columns
+df_coc = df_coc.rename(columns={
+    'PIN': 'pin',
+    'Community Area Number': 'chicago_community_area_num',
+    'Community Area Name': 'chicago_community_area_name',
+    'Zip Code': 'zip_code',
+    'Latitude': 'latitude',
+    'Longitude': 'longitude'
+})
+```
+
+```{python}
+df_coc = df_coc.dropna()
+
+df_coc['type'] = 'City-Owned'
+df_ccao['type'] = 'Private'
+```
+
+```{python}
+df = pd.concat([df_ccao, df_coc], axis=0).drop_duplicates(subset='pin')
+```
+
+```{python}
+df.head()
+```
