@@ -18,7 +18,7 @@ include-before-body:
     }
 ---
 
-# 0 Set-up
+# 1 Set-up
 
 ```{python} 
 #| echo: false
@@ -48,7 +48,7 @@ df_city.shape
 ```
 
 
-# 1 Data cleaning and Quality check
+# 2 Data cleaning and Quality check
 
 ```{python}
 # Filter out properties without zip codes
