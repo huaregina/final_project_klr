@@ -84,7 +84,6 @@ df2 = df1[(df1['Latitude'].notna()) & (df1['Longitude'].notna()) & (df1['Latitud
 # 3 Display vacant lots by scatter plot
 ## Choice1: By Binned coordinates
 ```{python}
-#| echo: false
 # Define the binning function with a step size of 0.01
 def bin_coordinates(coord, step=0.01):
     return np.floor(coord / step) * step
@@ -106,7 +105,7 @@ scatter_data = scatter_data.rename(columns={'Binned_Latitude': 'Latitude', 'Binn
 scatter = alt.Chart(scatter_data).mark_circle(color='blue', opacity=0.5).encode(
     longitude='Longitude:Q',
     latitude='Latitude:Q',
-    size=alt.Size('Count:Q', title='Number of Observations', scale=alt.Scale(range=[10, 500])),
+    size=alt.Size('Count:Q', title='City-owned Vacant Lands Counts', scale=alt.Scale(range=[10, 500])),
     tooltip=['Latitude:Q', 'Longitude:Q', 'Count:Q']
 ).project(
     type='albersUsa'
@@ -116,36 +115,6 @@ scatter = alt.Chart(scatter_data).mark_circle(color='blue', opacity=0.5).encode(
 )
 ```
 
-## Choice2: By Community areas
-```{python}
-#| echo: false
-
-# Calculate centroids for community areas
-gdf['centroid'] = gdf.geometry.centroid
-gdf['Longitude'] = gdf['centroid'].x
-gdf['Latitude'] = gdf['centroid'].y
-
-# Aggregate crime counts by Community Areas
-community_counts = df_crime.groupby('Community Area').size().reset_index(name='Count')
-
-# Merge centroids with community crime counts
-community_scatter_data = gdf.merge(community_counts, left_on='AREA_NUMBE', right_on='Community Area', how='left')
-community_scatter_data['Count'] = community_scatter_data['Count'].fillna(0).astype(int)
-```
-```{python}
-# Create scatter plot with size representing counts for each community area
-scatter2 = alt.Chart(community_scatter_data).mark_circle(color='blue', opacity=0.6).encode(
-    longitude='Longitude:Q',
-    latitude='Latitude:Q',
-    size=alt.Size('Count:Q', title='Crime Counts', scale=alt.Scale(range=[10, 500])),
-    tooltip=['AREA_NUMBE:O', 'Count:Q']
-).project(
-    type='albersUsa'
-).properties(
-    width=600,
-    height=400
-)
-```
 
 # 4 Display crime frequency by chropleth map
 ## 4.0 Transform CommaAreas file to shapefile
@@ -180,6 +149,23 @@ gdf = gpd.read_file(shapefile_path)
 # A quick check
 print(gdf.head())
 print(gdf.dtypes)    # AREA_NUMBE: int64, no missing data
+```
+```{python}
+# Calculate centroids for each polygon in the geometry column
+gdf['centroid'] = gdf.geometry.centroid
+
+# Extract Longitude and Latitude from the centroid
+gdf['Longitude'] = gdf['centroid'].x
+gdf['Latitude'] = gdf['centroid'].y
+
+# Check the calculated values
+# print(gdf[['AREA_NUMBE', 'Longitude', 'Latitude']].head())
+
+# Drop the 'centroid' column as it contains Point objects
+gdf = gdf.drop(columns=['centroid'])
+
+# Check if Longitude and Latitude are numeric
+print(gdf[['Longitude', 'Latitude']].dtypes)
 ```
 
 ## 4.2 Read Crime_2023 file
@@ -239,10 +225,10 @@ chro_map = (base_map + choropleth).configure_view(
 
 
 # 5 Combine the chropleth map and scatter plot
-## Choice1: By Binned coordinates
+## 5.1 Choice1: By Binned coordinates
 ```{python}
 # Combine the choropleth map and scatter layers
-combined_map1 = (chro_map + scatter).properties(
+combined_map = (chro_map + scatter).properties(
     title={
         'text': 'Crime Counts and Vacant Lands by Community Area',
         'fontSize': 16,
@@ -253,11 +239,43 @@ combined_map1 = (chro_map + scatter).properties(
 )
 
 # Display the combined map
-combined_map1
+combined_map
 
 ```
 
-## Choice2: By Community areas
+## 5.2 Choice2: By Community areas
+```{python}
+# Check the data type
+# print(df2.dtypes)
+
+# Convert Community Area Number to int64 and remove rows with value 0
+df2['Community Area Number'] = pd.to_numeric(df2['Community Area Number'], errors='coerce').fillna(0).astype(int)
+df2_clean = df2[df2['Community Area Number'] != 0]
+```
+```{python}
+# Aggregate vacant lot counts by Community Areas from df2_clean
+vacant_lot_counts = df2_clean.groupby('Community Area Number').size().reset_index(name='Count')
+
+# Merge centroids with community vacant lot counts
+vacant_scatter_data = gdf.merge(vacant_lot_counts, left_on='AREA_NUMBE', right_on='Community Area Number', how='left')
+vacant_scatter_data['Count'] = vacant_scatter_data['Count'].fillna(0).astype(int)
+```
+```{python}
+# Create scatter plot with size representing vacant lot counts for each community area
+scatter2 = alt.Chart(vacant_scatter_data).mark_circle(color='blue', opacity=0.6).encode(
+    longitude='Longitude:Q',
+    latitude='Latitude:Q',
+    size=alt.Size('Count:Q', title='City-owned Vacant Lands Counts', scale=alt.Scale(range=[10, 500])),
+    tooltip=['AREA_NUMBE:O', 'Count:Q']
+).project(
+    type='albersUsa'
+).properties(
+    title="Vacant Lots by Community Area",
+    width=600,
+    height=400
+)
+
+```
 ```{python}
 # Combine the choropleth map and scatter layers
 combined_map2 = (chro_map + scatter2).properties(
