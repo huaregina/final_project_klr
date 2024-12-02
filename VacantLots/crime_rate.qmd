@@ -1,0 +1,298 @@
+---
+title: "Final Project First Try"
+author: "Liling Shen"
+date: "2024-11-30"
+format: 
+  pdf:
+    include-in-header: 
+       text: |
+         \usepackage{fvextra}
+         \DefineVerbatimEnvironment{Highlighting}{Verbatim}{breaklines,commandchars=\\\{\}}
+include-before-body:
+  text: |
+    \RecustomVerbatimEnvironment{verbatim}{Verbatim}{
+      showspaces = false,
+      showtabs = false,
+      breaksymbolleft={},
+      breaklines
+    }
+---
+
+# 1 Set-up
+
+```{python} 
+#| echo: false
+
+# Import required packages
+import pandas as pd
+import altair as alt 
+import pandas as pd
+import re
+import os
+import geopandas as gpd
+from shapely import wkt
+from datetime import date
+import numpy as np
+alt.data_transformers.disable_max_rows() 
+
+import json
+import requests
+```
+
+```{python}
+# Read the csv file
+df_city = pd.read_csv('City-Owned_Land_Inventory_20241130.csv')
+
+# Check the dimensions of df_city
+df_city.shape
+```
+
+
+# 2 Data cleaning and Quality check
+
+```{python}
+# Filter out properties without zip codes
+df0 = df_city[~df_city['Zip Code'].isna()]
+
+df0.columns = df0.columns.str.strip()
+
+# A quick check
+df0 = df0.copy()
+df0['Latitude'] = pd.to_numeric(df0['Latitude'], errors='coerce')
+df0['Longitude'] = pd.to_numeric(df0['Longitude'], errors='coerce')
+# print(df0.dtypes)
+
+# Check the dimensions
+# print(df0.shape)
+```
+```{python}
+# Filter by property status
+df1 = df0[df0['Property Status'] == 'Owned by City']
+
+# Check the dimensions
+# print(df1.shape)
+```
+```{python}
+# Remove rows with missing or zero coordinates
+df2 = df1[(df1['Latitude'].notna()) & (df1['Longitude'].notna()) & (df1['Latitude'] != 0) & (df1['Longitude'] != 0)]
+
+# Check the missing rate
+# print(df2[['Latitude', 'Longitude']].isna().sum())  # no missing data
+```
+
+
+# 3 Display vacant lots by scatter plot
+## Choice1: By Binned coordinates
+```{python}
+# Define the binning function with a step size of 0.01
+def bin_coordinates(coord, step=0.01):
+    return np.floor(coord / step) * step
+
+# Apply binning to Latitude and Longitude columns
+df2['Binned_Latitude'] = bin_coordinates(df2['Latitude'], step=0.01)
+df2['Binned_Longitude'] = bin_coordinates(df2['Longitude'], step=0.01)
+
+# Count occurrences of each binned coordinate combination
+coordinate_counts = df2.groupby(['Binned_Latitude', 'Binned_Longitude']).size().reset_index(name='Count')
+
+```
+```{python}
+# Ensure scatter data is in the correct format
+scatter_data = coordinate_counts.copy()
+scatter_data = scatter_data.rename(columns={'Binned_Latitude': 'Latitude', 'Binned_Longitude': 'Longitude'})
+
+# Create scatter plot with consistent projection
+scatter = alt.Chart(scatter_data).mark_circle(color='blue', opacity=0.5).encode(
+    longitude='Longitude:Q',
+    latitude='Latitude:Q',
+    size=alt.Size('Count:Q', title='City-owned Vacant Lands Counts', scale=alt.Scale(range=[10, 500])),
+    tooltip=['Latitude:Q', 'Longitude:Q', 'Count:Q']
+).project(
+    type='albersUsa'
+).properties(
+    width=600,
+    height=400
+)
+```
+
+
+# 4 Display crime frequency by chropleth map
+## 4.0 Transform CommaAreas file to shapefile
+```{python}
+# Read the csv file
+# df_CommA_raw = pd.read_csv('CommAreas.csv')
+
+# Check the data types of df_CommA_raw
+# print(df_CommA_raw.dtypes)
+
+# Convert the 'the_geom' column to geometries
+# df_CommA_raw['geometry'] = df_CommA_raw['the_geom'].apply(wkt.loads)
+
+# Convert the DataFrame to a GeoDataFrame
+# gdf_CommA = gpd.GeoDataFrame(df_CommA_raw, geometry='geometry', crs="EPSG:4326")
+
+# Save the GeoDataFrame as a shapefile
+# gdf_CommA.to_file('CommAreas.shp', driver='ESRI Shapefile')
+```
+
+# 4.1 Read the .shp file
+```{python}
+# Using relative path
+shapefile_path = './CommaArea/CommAreas.shp'
+
+# Read the shapefile
+gdf = gpd.read_file(shapefile_path)
+
+# Transform data type
+# gdf2['zip'] = pd.to_numeric(gdf2['zip'], errors='coerce').fillna(0).astype(int)  # If we use zip codes
+
+# A quick check
+print(gdf.head())
+print(gdf.dtypes)    # AREA_NUMBE: int64, no missing data
+```
+```{python}
+# Calculate centroids for each polygon in the geometry column
+gdf['centroid'] = gdf.geometry.centroid
+
+# Extract Longitude and Latitude from the centroid
+gdf['Longitude'] = gdf['centroid'].x
+gdf['Latitude'] = gdf['centroid'].y
+
+# Check the calculated values
+# print(gdf[['AREA_NUMBE', 'Longitude', 'Latitude']].head())
+
+# Drop the 'centroid' column as it contains Point objects
+gdf = gdf.drop(columns=['centroid'])
+
+# Check if Longitude and Latitude are numeric
+print(gdf[['Longitude', 'Latitude']].dtypes)
+```
+
+## 4.2 Read Crime_2023 file
+```{python}
+# Read the csv file
+df_crime = pd.read_csv('Crimes_2023.csv')
+
+# Check the dimensions of df_crime
+print(df_crime.head())
+print(df_crime.dtypes)  # Community Area: int64, no missing data
+```
+
+## 4.3 Draw the chropleth map colored by crime counts
+```{python}
+# Merge the shapefile GeoDataFrame with the crime data DataFrame
+gdf_merged = gdf.merge(df_crime.groupby('Community Area').size().reset_index(name='Crime_Counts'),
+                       left_on='AREA_NUMBE', right_on='Community Area', how='left')
+
+# Fill missing crime counts with 0
+gdf_merged['Crime_Counts'] = gdf_merged['Crime_Counts'].fillna(0).astype(int)
+
+# Convert the GeoDataFrame to GeoJSON format for Altair
+gdf_merged_json = json.loads(gdf_merged.to_crs(epsg=4326).to_json())
+
+# Create a base map layer
+base_map = alt.Chart(alt.Data(values=gdf_merged_json['features'])).mark_geoshape(
+    fill='white',
+    stroke='gray',
+    strokeWidth=0.5
+).project(
+    type='albersUsa'  # Use Albers USA projection for consistency
+).properties(
+    width=600,
+    height=400
+)
+
+# Create the choropleth layer for crime counts
+choropleth = alt.Chart(alt.Data(values=gdf_merged_json['features'])).mark_geoshape(
+    stroke='white',
+    strokeWidth=0.5
+).encode(
+    color=alt.Color('properties.Crime_Counts:Q', scale=alt.Scale(scheme='reds'), title='Crime Counts'),
+    tooltip=[
+        alt.Tooltip('properties.AREA_NUMBE:O', title='Community Area'),
+        alt.Tooltip('properties.Crime_Counts:Q', title='Crime Counts')
+    ]
+).project(
+    type='albersUsa'
+)
+
+# Combine the base map and choropleth layers
+chro_map = (base_map + choropleth).configure_view(
+    stroke=None  # Remove gridlines
+)
+
+```
+
+
+# 5 Combine the chropleth map and scatter plot
+## 5.1 Choice1: By Binned coordinates
+```{python}
+# Combine the choropleth map and scatter layers
+combined_map = (chro_map + scatter).properties(
+    title={
+        'text': 'Crime Counts and Vacant Lands by Community Area',
+        'fontSize': 16,
+        'anchor': 'middle'
+    }
+).configure_view(
+    stroke=None  # Remove gridlines
+)
+
+# Display the combined map
+combined_map
+
+```
+
+## 5.2 Choice2: By Community areas
+```{python}
+# Check the data type
+# print(df2.dtypes)
+
+# Convert Community Area Number to int64 and remove rows with value 0
+df2['Community Area Number'] = pd.to_numeric(df2['Community Area Number'], errors='coerce').fillna(0).astype(int)
+df2_clean = df2[df2['Community Area Number'] != 0]
+```
+```{python}
+# Aggregate vacant lot counts by Community Areas from df2_clean
+vacant_lot_counts = df2_clean.groupby('Community Area Number').size().reset_index(name='Count')
+
+# Merge centroids with community vacant lot counts
+vacant_scatter_data = gdf.merge(vacant_lot_counts, left_on='AREA_NUMBE', right_on='Community Area Number', how='left')
+vacant_scatter_data['Count'] = vacant_scatter_data['Count'].fillna(0).astype(int)
+```
+```{python}
+# Create scatter plot with size representing vacant lot counts for each community area
+scatter2 = alt.Chart(vacant_scatter_data).mark_circle(color='blue', opacity=0.6).encode(
+    longitude='Longitude:Q',
+    latitude='Latitude:Q',
+    size=alt.Size('Count:Q', title='City-owned Vacant Lands Counts', scale=alt.Scale(range=[10, 500])),
+    tooltip=['AREA_NUMBE:O', 'Count:Q']
+).project(
+    type='albersUsa'
+).properties(
+    title="Vacant Lots by Community Area",
+    width=600,
+    height=400
+)
+
+```
+```{python}
+# Combine the choropleth map and scatter layers
+combined_map2 = (chro_map + scatter2).properties(
+    title={
+        'text': 'Crime Counts and Vacant Lands by Community Area',
+        'fontSize': 16,
+        'anchor': 'middle'
+    }
+).configure_view(
+    stroke=None  # Remove gridlines
+)
+
+# Display the combined map
+combined_map2
+
+```
+
+
+
+
