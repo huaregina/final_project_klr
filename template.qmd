@@ -33,6 +33,10 @@ import altair as alt
 import time
 import requests
 import datetime as dt
+import numpy as np
+import geopandas as gpd
+from shapely import wkt
+import json
 
 import warnings 
 warnings.filterwarnings('ignore')
@@ -73,12 +77,12 @@ selected_columns = [
 data_chi_vacant = data_chi_vacant[selected_columns]
 
 # save it to the repo
-data_chi_vacant.to_csv('/Users/aa/Documents/GitHub/final_project_klr/data/data_ccao', index=False)
+data_chi_vacant.to_csv('/Users/aa/Documents/GitHub/final_project_klr/data/data_ccao.csv', index=False)
 ```
 
 ```{python}
 # read in the data
-df_ccao = pd.read_csv('/Users/aa/Documents/GitHub/final_project_klr/data/data_ccao')
+df_ccao = pd.read_csv('/Users/aa/Documents/GitHub/final_project_klr/data/data_ccao.csv')
 df_coc = pd.read_csv('/Users/aa/Documents/GitHub/final_project_klr/data/df_city_owned.csv')
 ```
 
@@ -87,6 +91,81 @@ df_coc = df_coc[df_coc['Zip Code'] != 0]
 df_coc = df_coc[df_coc['Property Status'] == 'Owned by City']
 df_coc = df_coc.dropna(subset=['Zip Code'])
 ```
+
+
+2. How many total sqft of vacant land in Chicago and how much of the value?
+
+```{python}
+print(f"The total area of vacant land is {sum(df_coc['Sq. Ft.'])}")
+```
+
+```{python}
+# Compute counts and average value for each community area
+top_community_areas = (
+    df_coc.groupby('Community Area Name')
+    .agg(counts=('Community Area Name', 'size'), avg_value=('Land Value (2022)', 'mean'))
+    .reset_index()
+    .sort_values('counts', ascending=False)
+    .head(15)
+)
+
+# Create a bar chart for counts
+top_community_bar = alt.Chart(top_community_areas).mark_bar(color='rgb(151, 188, 193)').encode(
+    x=alt.X('counts:Q', title='Count', axis=alt.Axis(titleFontSize=12)),
+    y=alt.Y('Community Area Name:N', sort='-x', title='Community Area Name'),
+    tooltip=['Community Area Name', 'counts']
+)
+
+# Create a line chart for average value
+top_community_line = alt.Chart(top_community_areas).mark_line(color='rgb(222, 118, 113)').encode(
+    x=alt.X('avg_value:Q', title = None, axis = None),
+    y=alt.Y('Community Area Name:N', sort='-x', title=None),  # Hide line chart y-axis
+    tooltip=['Community Area Name', 'avg_value']
+)
+
+vertical_line_20k = alt.Chart(top_community_areas).mark_rule(color='grey', strokeDash=[5, 5]).encode(
+    x=alt.value(55)
+)
+
+vertical_line_100k = alt.Chart(top_community_areas).mark_rule(color='grey', strokeDash=[5, 5]).encode(
+    x=alt.value(273)
+)
+
+# Add labels for the vertical lines
+label_20k = alt.Chart(pd.DataFrame({'x': [20000], 'y': [0], 'label': ['20k']})).mark_text(
+    text='$20,000', align='left', dx=5, dy=-15, color='grey'
+).encode(
+    x=alt.value(55),
+    y=alt.value(30)  # Adjust label position vertically
+)
+
+label_100k = alt.Chart(pd.DataFrame({'x': [100000], 'y': [0], 'label': ['100k']})).mark_text(
+    text='$100,000', align='left', dx=5, dy=-15, color='grey'
+).encode(
+    x=alt.value(215),
+    y=alt.value(250)  # Adjust label position vertically
+)
+
+# Combine the bar and line charts
+alt.layer(top_community_bar, 
+          top_community_line,
+          vertical_line_20k, 
+          vertical_line_100k,
+          label_20k,
+          label_100k
+          ).resolve_scale(
+    y='shared',  # Share the y-axis between the bar and line charts
+    x='independent'  # Use independent x-axes
+).properties(
+    title='Top 15 Community Areas by Counts and Average Value',
+    width=300,
+    height=300
+)
+
+```
+
+
+3. Is all data in City of Chicago a subset of the Cook County Data?
 
 We find almost all the pin codes from the City of Chicago data is not in the Cook County data so we will combine the two dataset.
 
@@ -144,3 +223,221 @@ df = pd.concat([df_ccao, df_coc], axis=0).drop_duplicates(subset='pin')
 ```{python}
 df.head()
 ```
+
+
+# 3. Display vacant lots by scatter plot
+## Choice1: By Binned coordinates
+```{python}
+# Define the binning function with a step size of 0.01
+def bin_coordinates(coord, step=0.01):
+    return np.floor(coord / step) * step
+
+# Apply binning to Latitude and Longitude columns
+df['Binned_Latitude'] = bin_coordinates(df['latitude'], step=0.01)
+df['Binned_Longitude'] = bin_coordinates(df['longitude'], step=0.01)
+
+# Count occurrences of each binned coordinate combination
+coordinate_counts = df.groupby(['Binned_Latitude', 'Binned_Longitude']).size().reset_index(name='Count')
+```
+
+```{python}
+# Ensure scatter data is in the correct format
+scatter_data = coordinate_counts.copy()
+scatter_data = scatter_data.rename(columns={'Binned_Latitude': 'Latitude', 'Binned_Longitude': 'Longitude'})
+
+# Create scatter plot with consistent projection
+scatter = alt.Chart(scatter_data).mark_circle(color='blue', opacity=0.5).encode(
+    longitude='Longitude:Q',
+    latitude='Latitude:Q',
+    size=alt.Size('Count:Q', title='Vacant Lands Counts', scale=alt.Scale(range=[10, 300])),
+    tooltip=['Latitude:Q', 'Longitude:Q', 'Count:Q']
+).project(
+    type='identity',
+    reflectY=True
+).properties(
+    width=400,
+    height=400
+)
+```
+
+
+## Choice2: By raw data points
+
+```{python}
+scatter_plot = alt.Chart(df).mark_point(size=0.3, filled=True, color='blue').encode(
+    longitude='longitude',
+    latitude='latitude'
+).project(
+    type='identity',
+    reflectY=True
+).properties(
+    title='Vacant Land Locations'
+)
+
+scatter_plot.show()
+```
+
+
+# 4.1 Read the .shp file
+```{python}
+# Using relative path
+shapefile_path = './VacantLots/CommaArea/CommAreas.shp'
+
+# Read the shapefile
+gdf = gpd.read_file(shapefile_path)
+
+# Transform data type
+# gdf2['zip'] = pd.to_numeric(gdf2['zip'], errors='coerce').fillna(0).astype(int)  # If we use zip codes
+
+# A quick check
+print(gdf.head())
+print(gdf.dtypes)    # AREA_NUMBE: int64, no missing data
+```
+```{python}
+# Calculate centroids for each polygon in the geometry column
+gdf['centroid'] = gdf.geometry.centroid
+
+# Extract Longitude and Latitude from the centroid
+gdf['Longitude'] = gdf['centroid'].x
+gdf['Latitude'] = gdf['centroid'].y
+
+# Check the calculated values
+# print(gdf[['AREA_NUMBE', 'Longitude', 'Latitude']].head())
+
+# Drop the 'centroid' column as it contains Point objects
+gdf = gdf.drop(columns=['centroid'])
+
+# Check if Longitude and Latitude are numeric
+print(gdf[['Longitude', 'Latitude']].dtypes)
+```
+
+## 4.2 Read Social Economic file
+```{python}
+
+# Read the csv file
+df_se = pd.read_csv('./data/socioeconomic.csv')
+
+# Rename the column in df_se
+df_se = df_se.rename(columns={'Community Area Number': 'AREA_NUMBE', 'PER CAPITA INCOME ': 'INCOME'})
+```
+
+## 4.3 Draw the chropleth map colored by percapita income
+
+```{python}
+# Convert the GeoDataFrame to GeoJSON format for Altair
+gdf_merged_json = json.loads(gdf_merged.to_crs(epsg=4326).to_json())
+
+# Create a base map layer
+base_map = alt.Chart(alt.Data(values=gdf_merged_json['features'])).mark_geoshape(
+    fill='white',
+    stroke='gray',
+    strokeWidth=0.5
+).project(
+    type='identity',
+    reflectY=True  # Use Albers USA projection for consistency
+).properties(
+    width=400,
+    height=400
+)
+
+# Create the choropleth layer for crime counts
+choropleth = alt.Chart(alt.Data(values=gdf_merged_json['features'])).mark_geoshape(
+    stroke='white',
+    strokeWidth=0.5
+).encode(
+    color=alt.Color('properties.INCOME:Q', scale=alt.Scale(scheme='bluegreen'), title='Per Capita Income')
+).project(
+    type='identity',
+    reflectY=True
+)
+
+# Combine the base map and choropleth layers
+chro_map = (base_map + choropleth).configure_view(
+    stroke=None  # Remove gridlines
+)
+```
+
+
+# 5 Combine the chropleth map and scatter plot
+
+## 5.1 Choice1: By Binned coordinates
+
+```{python}
+
+# Combine the choropleth map and scatter layers
+combined_map = (chro_map + scatter_plot).properties(
+    title={
+        'text': 'Income Level and Vacant Lands by Community Area',
+        'fontSize': 16,
+        'anchor': 'middle'
+    }
+).configure_view(
+    stroke=None  # Remove gridlines
+)
+
+# Display the combined map
+combined_map
+```
+
+## 5.1 Choice1: By Binned coordinates
+```{python}
+# Combine the choropleth map and scatter layers
+combined_map = (chro_map + scatter).properties(
+    title={
+        'text': 'Income Level and Vacant Lands by Community Area',
+        'fontSize': 16,
+        'anchor': 'middle'
+    }
+).configure_view(
+    stroke=None  # Remove gridlines
+)
+
+# Display the combined map
+combined_map
+```
+
+## 5.2 Choice2: By Community areas
+
+```{python}
+# Aggregate vacant lot counts by Community Areas from df2_clean
+vacant_lot_counts = df.groupby('chicago_community_area_num').size().reset_index(name='Count')
+
+# Merge centroids with community vacant lot counts
+vacant_scatter_data = gdf.merge(vacant_lot_counts, left_on='AREA_NUMBE', right_on='chicago_community_area_num', how='left')
+vacant_scatter_data['Count'] = vacant_scatter_data['Count'].fillna(0).astype(int)
+```
+
+```{python}
+# Create scatter plot with size representing vacant lot counts for each community area
+scatter2 = alt.Chart(vacant_scatter_data).mark_circle(color='blue', opacity=0.6).encode(
+    longitude='Longitude:Q',
+    latitude='Latitude:Q',
+    size=alt.Size('Count:Q', title='City-owned Vacant Lands Counts', scale=alt.Scale(range=[10, 500])),
+    tooltip=['AREA_NUMBE:O', 'Count:Q']
+).project(
+    type='albersUsa'
+).properties(
+    title="Vacant Lots by Community Area",
+    width=600,
+    height=400
+)
+
+```
+```{python}
+# Combine the choropleth map and scatter layers
+combined_map2 = (chro_map + scatter2).properties(
+    title={
+        'text': 'Crime Counts and Vacant Lands by Community Area',
+        'fontSize': 16,
+        'anchor': 'middle'
+    }
+).configure_view(
+    stroke=None  # Remove gridlines
+)
+
+# Display the combined map
+combined_map2
+```
+
+
+
