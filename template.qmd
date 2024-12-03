@@ -514,8 +514,51 @@ final_map_combined.show()
 
 ```
 
+## 4.2 Racial Composition of top 5 zip codes with vacant lands (Zip code)
 
-## 4.2 Crime Rate (Zip Code)
+```{python}
+# count vacant lands by zip code
+vacant_land_counts = df.groupby('zip_code').size().reset_index(name='vacant_land_count')
+# sort to top 5 zip codes with most vacant lands 
+top5_zip_vacant = vacant_land_counts.sort_values(by='vacant_land_count', ascending=False).head() 
+# convert zip_code to string
+top5_zip_vacant['zip_code'] = top5_zip_vacant['zip_code'].apply(lambda x: str(int(x)))
+print(top5_zip_vacant)
+
+```
+
+```{python}
+# calculate the percentage of population by race in each zip code
+for col in df_pop_2021.columns[20:25]: 
+    df_pop_2021[f'{col} Percentage'] = (df_pop_2021[col] / df_pop_2021['Population - Total']) * 100
+```
+
+```{python}
+df_pop_pct = df_pop_2021.melt(id_vars=['Geography'], 
+                  value_vars=[col for col in df_pop_2021.columns if 'Percentage' in col], 
+                  var_name='Race', 
+                  value_name='Percentage')
+# Clean up column names 
+df_pop_pct['Race'] = df_pop_pct['Race'].str.replace('Population - ', '').str.replace(' Non-Latinx', '')
+df_pop_pct = df_pop_pct.rename(columns={'Geography': 'zip'})
+# filter to racial percentage of top 5 zip codes with most vacant lands
+df_pop_pct_top5 = df_pop_pct[df_pop_pct['zip'].isin(top5_zip_vacant['zip_code'])]
+
+```
+
+```{python}
+# plot the racial composition of those zip codes
+alt.Chart(df_pop_pct_top5).mark_bar().encode(
+    x=alt.X('zip:N', title='Zip Code'),
+    y=alt.Y('Percentage:Q', title='Percentage of Population'),
+    color='Race:N',  # Stacking by Race
+    tooltip=['zip:N', 'Race:N', 'Percentage:Q']
+).properties(
+    width=600,
+    height=400
+)
+```
+## 4.3 Crime Rate (Zip Code)
 
 ```{python}
 # read Chicago zip code shapefile
@@ -640,7 +683,7 @@ combined_map_crime
 ```
 
 
-## 4.3 Income level (Community)
+## 4.4 Income level (Community)
 
 ```{python}
 # read the Chicago Community Shapefile
