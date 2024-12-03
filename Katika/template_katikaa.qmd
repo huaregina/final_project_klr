@@ -225,23 +225,7 @@ gdf_crime_rate = gdf_zip.merge(df_crime_rate, on='zip', how='left')
 gdf_crime_rate['crime_rate'] = gdf_crime_rate['crime_rate'].fillna(0).astype(int)
 ```
 
-```{python}
-from scipy.stats.mstats import winsorize
-
-# Define the Windsorization limits (e.g., cap lower 1% and upper 1%)
-lower_limit = 0.01  # Lower 1%
-upper_limit = 0.96  # Upper 1%
-
-# Apply Windsorization
-gdf_crime_rate['crime_rate_windsorized'] = winsorize(
-    gdf_crime_rate['crime_rate'], 
-    limits=(lower_limit, 1 - upper_limit)
-)
-
-# Print before and after comparison
-print(gdf_crime_rate[['crime_rate', 'crime_rate_windsorized']].describe())
-
-```
+c
 
 ```{python}
 crime_rate_map = alt.Chart(gdf_crime_rate
@@ -294,4 +278,66 @@ combined_map = (crime_rate_map + scatter_plot).properties(
 combined_map
 ```
 
+```{python}
+df_pop_2021.columns
+```
 
+# population percentage by zip 
+
+```{python}
+for col in df_pop_2021.columns[20:25]: 
+    df_pop_2021[f'{col} Percentage'] = (df_pop_2021[col] / df_pop_2021['Population - Total']) * 100
+```
+
+```{python}
+df_pop_pct = df_pop_2021.melt(id_vars=['Geography'], 
+                  value_vars=[col for col in df_pop_2021.columns if 'Percentage' in col], 
+                  var_name='Race', 
+                  value_name='Percentage')
+# Clean up 'Race' column names for easier display
+df_pop_pct['Race'] = df_pop_pct['Race'].str.replace('Population - ', '').str.replace(' Non-Latinx', '')
+df_pop_pct = df_pop_pct.rename(columns={'Geography': 'zip'})
+
+```
+
+```{python}
+alt.Chart(df_pop_pct).mark_bar().encode(
+    x=alt.X('zip:N', title='Zip Code'),
+    y=alt.Y('Percentage:Q', title='Percentage of Population'),
+    color='Race:N',  # Stacking by Race
+    tooltip=['zip:N', 'Race:N', 'Percentage:Q']
+).properties(
+    width=600,
+    height=400
+)
+```
+## Template to assign community area by longitude and latitude
+
+```{python}
+import zipfile
+```
+```{python}
+#### identify the community area for each crime from its latitude&longitude
+
+# drop rows with missing locations
+df_pop = df_pop.dropna(subset=['Latitude', 'Longitude'])
+
+# Create a 'geometry' column by applying Point to each latitude and longitude
+df_crime['geometry'] = df_crime.apply(lambda row: Point(row['Longitude'], row['Latitude']), axis=1)
+
+# convert df_crime to a geodataframe
+gdf_crime = gpd.GeoDataFrame(df_crime, geometry='geometry', crs='EPSG:4326')
+
+# Ensure zip code GeoDataFrame is also in the same crs
+gdf_zip = gdf_zip.to_crs('EPSG:4326')
+
+# Spatial join to assign zip codes to crimes
+gdf_crime = gpd.sjoin(gdf_crime, gdf_zip, how='left', predicate='within')
+
+gdf_crime.head()
+```
+
+
+```{python}
+df_pop
+```
