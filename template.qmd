@@ -555,7 +555,8 @@ alt.Chart(df_pop_pct_top5).mark_bar().encode(
     tooltip=['zip:N', 'Race:N', 'Percentage:Q']
 ).properties(
     width=600,
-    height=400
+    height=400,
+    title='Racial Composition of Top 5 Zip Codes with most vacant lands'
 )
 ```
 ## 4.3 Crime Rate (Zip Code)
