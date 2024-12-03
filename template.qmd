@@ -357,16 +357,31 @@ gdf_crime_rate = gdf_zip.merge(df_crime_rate, on='zip', how='left')
 # Fill missing crime rate with 0
 gdf_crime_rate['crime_rate'] = gdf_crime_rate['crime_rate'].fillna(0).astype(int)
 
+# Define the Windsorization limits 
+lower_limit = 0.01  
+upper_limit = 0.96  
+
+# Apply Windsorization
+gdf_crime_rate['crime_rate_windsorized'] = winsorize(
+    gdf_crime_rate['crime_rate'], 
+    limits=(lower_limit, 1 - upper_limit)
+)
+
+# Print before and after comparison
+print(gdf_crime_rate[['crime_rate', 'crime_rate_windsorized']].describe())
+
+```
+
+```{python}
 crime_rate_map = alt.Chart(gdf_crime_rate
 ).mark_geoshape(
-  # Default fill for all areas
-    stroke='white',
+    stroke='black',
     strokeWidth=0.5
 ).encode(
-    color=alt.Color('crime_rate:Q', 
-                    scale=alt.Scale(range=["lightgray", "red"]),  
+    color=alt.Color('crime_rate_windsorized:Q', 
+                    scale=alt.Scale(range=["transparent", "red"]),  
                     title='Crime rate per 1,000 population'),
-    tooltip=['zip:N', 'crime_rate:Q']
+    tooltip=['zip:N', 'crime_rate_windsorized:Q']
 ).project(
     type='albersUsa'  
 ).properties(
@@ -376,6 +391,8 @@ crime_rate_map = alt.Chart(gdf_crime_rate
 
 crime_rate_map
 ```
+
+
 
 ```{python}
 # Combine the choropleth map and scatter layers
