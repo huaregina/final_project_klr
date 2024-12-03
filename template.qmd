@@ -488,3 +488,71 @@ combined_map_income = (chro_map + scatter).properties(
 # Display the combined map
 combined_map_income
 ```
+
+## 4.3 Business Density (Zip Code)
+
+```{python}
+# read business license data for 2023
+# We will use the count of business licences by each zip code as the indicator of business density 
+df_busn = pd.read_csv('./data/business_license_2023.csv')
+
+df_busn = df_busn.groupby('ZIP CODE').size().reset_index(name='Count')
+
+df_busn = df_busn[
+    (df_busn['ZIP CODE'].str.startswith('606')) |
+    (df_busn['ZIP CODE'] == '60827') |
+    (df_busn['ZIP CODE'] == '60707')
+]
+```
+
+```{python}
+# rename the column
+df_busn = df_busn.rename(columns={
+    'ZIP CODE': 'zip',
+    'Count': 'business_density'
+})
+
+# merge with zip shapefile
+gdf_busn = gdf_zip.merge(df_busn, on='zip', how='left')
+
+# Fill missing column with 0
+gdf_busn['business_density'] = gdf_busn['business_density'].fillna(0).astype(int)
+```
+
+```{python}
+busn_map = alt.Chart(gdf_busn
+).mark_geoshape(
+  # Default fill for all areas
+    stroke='white',
+    strokeWidth=0.5
+).encode(
+    color=alt.Color('business_density:Q', 
+                    scale=alt.Scale(range=["transparent", "red"]),  
+                    title='Business Denisty'),
+    tooltip=['zip:N', 'Business Density:Q']
+).project(
+    type='identity',
+    reflectY=True 
+).properties(
+    width=600,
+    height=400,
+)
+
+busn_map
+```
+
+```{python}
+# Combine the choropleth map and scatter layers
+combined_map_busn = (busn_map + scatter).properties(
+    title={
+        'text': 'Business Density by zip code and Vacant Lands',
+        'fontSize': 16,
+        'anchor': 'middle'
+    }
+).configure_view(
+    stroke=None  # Remove gridlines
+)
+
+# Display the combined map
+combined_map_busn
+```
