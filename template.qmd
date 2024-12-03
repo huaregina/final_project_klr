@@ -287,6 +287,9 @@ scatter
 # 4. How is vacant lots related with other characteristics of the community?
 
 ## 4.1 CTA lines (Zip Code)
+
+The analysis only looked at CTA train stations and not proximity to Metra stations or high-capacity bus routes as previous TOD incentives in Chicago have largely focused on areas near CTA train stations.
+
 ```{python}
 # Read the csv file
 df_city = pd.read_csv('City-Owned_Land_Inventory_20241130.csv')  # I just use the city-owned data here
