@@ -517,6 +517,19 @@ final_map_combined.show()
 ## 4.2 Racial Composition of top 5 zip codes with vacant lands (Zip code)
 
 ```{python}
+# read Chicago zip code shapefile
+gdf_zip = gpd.read_file('./data/Zip Codes/geo_export.shp')
+
+# read pop data
+df_pop = pd.read_csv('./data/Chicago_Population_Counts.csv')
+
+# filter to the latest year (2021) in population census data
+df_pop_2021 = df_pop[df_pop['Year']==2021]
+
+# rename columns
+df_pop_2021 = df_pop_2021.rename(columns={'Geography': 'zip','Population - Total': 'total_population'})
+```
+```{python}
 # count vacant lands by zip code
 vacant_land_counts = df.groupby('zip_code').size().reset_index(name='vacant_land_count')
 # sort to top 5 zip codes with most vacant lands 
@@ -530,17 +543,17 @@ print(top5_zip_vacant)
 ```{python}
 # calculate the percentage of population by race in each zip code
 for col in df_pop_2021.columns[20:25]: 
-    df_pop_2021[f'{col} Percentage'] = (df_pop_2021[col] / df_pop_2021['Population - Total']) * 100
+    df_pop_2021[f'{col} Percentage'] = (df_pop_2021[col] / df_pop_2021['total_population']) * 100
 ```
 
 ```{python}
-df_pop_pct = df_pop_2021.melt(id_vars=['Geography'], 
+df_pop_pct = df_pop_2021.melt(id_vars=['zip'], 
                   value_vars=[col for col in df_pop_2021.columns if 'Percentage' in col], 
                   var_name='Race', 
                   value_name='Percentage')
 # Clean up column names 
 df_pop_pct['Race'] = df_pop_pct['Race'].str.replace('Population - ', '').str.replace(' Non-Latinx', '')
-df_pop_pct = df_pop_pct.rename(columns={'Geography': 'zip'})
+
 # filter to racial percentage of top 5 zip codes with most vacant lands
 df_pop_pct_top5 = df_pop_pct[df_pop_pct['zip'].isin(top5_zip_vacant['zip_code'])]
 
@@ -562,14 +575,8 @@ alt.Chart(df_pop_pct_top5).mark_bar().encode(
 ## 4.3 Crime Rate (Zip Code)
 
 ```{python}
-# read Chicago zip code shapefile
-gdf_zip = gpd.read_file('./data/Zip Codes/geo_export.shp')
-
 # read crime data for 2023
 df_crime = pd.read_csv('./data/Crimes_2023.csv')
-
-# read pop data
-df_pop = pd.read_csv('./data/Chicago_Population_Counts.csv')
 ```
 
 ```{python}
@@ -599,24 +606,18 @@ crime_count_zip = gdf_crime.groupby('zip').size().reset_index(name='crime_count'
 
 ```{python}
 # Merge the crime count data with the population data (2021) using the correct column
-df_pop_2021 = df_pop[df_pop['Year']==2021]
-df_crime_rate = crime_count_zip.merge(df_pop_2021[['Geography','Population - Total']], left_on='zip', right_on='Geography')
+
+df_crime_rate = crime_count_zip.merge(df_pop_2021[['zip','total_population']], on='zip', how='left')
 ```
 
 ```{python}
 ## there is no population data on zip code 60666 --> might have to try the full census data
-df_pop[df_pop['Geography']==60666]
+df_pop[df_pop['Geography']==60666]## delete or not?
 ```
 
 ```{python}
-# rename population column
-df_crime_rate = df_crime_rate.rename(columns={'Population - Total': 'population'})
-
-# Drop the 'Geography' column
-df_crime_rate = df_crime_rate.drop(columns=['Geography'])
-
-# Calculate the crime rate per 100 people
-df_crime_rate['crime_rate'] = df_crime_rate['crime_count'] / df_crime_rate['population'] * 1000
+# Calculate the crime rate per 1,000 people
+df_crime_rate['crime_rate'] = df_crime_rate['crime_count'] / df_crime_rate['total_population'] * 1000
 
 # replace inf with na
 df_crime_rate['crime_rate'] = df_crime_rate['crime_rate'].replace([float('inf'), -float('inf')], float('nan'))
@@ -868,3 +869,47 @@ combined_map_busn = (busn_map + scatter).properties(
 # Display the combined map
 combined_map_busn
 ```
+# 4.x Population (Zip Code)
+
+```{python}
+
+# merge population data with Chicago zip code shapefile
+gdf_pop = gdf_zip.merge(df_pop_2021, on='zip', how='left')
+```
+```{python}
+population_map = alt.Chart(gdf_pop
+).mark_geoshape(
+    stroke='lightgray',
+    strokeWidth=0.5
+).encode(
+    color=alt.Color('total_population:Q', 
+                    scale=alt.Scale(scheme='bluegreen'),  
+                    title='Population by Zip Codes'),
+    tooltip=['zip:N', 'total_population:Q']
+).project(
+    type='identity',
+    reflectY=True  
+).properties(
+    width=600,
+    height=400,
+)
+
+population_map
+```
+
+```{python}
+# Combine the choropleth map and scatter layers
+combined_map_pop = (population_map + scatter).properties(
+    title={
+        'text': 'Population by zip code and Vacant Lands',
+        'fontSize': 16,
+        'anchor': 'middle'
+    }
+).configure_view(
+    stroke=None  # Remove gridlines
+)
+
+# Display the combined map
+combined_map_pop
+```
+
