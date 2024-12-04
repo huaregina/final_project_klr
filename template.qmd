@@ -1,7 +1,7 @@
 ---
-title: "title"
-author: "author"
-date: "date"
+title: "Vacant Lands in Chicago"
+author: "Liujun, Katika, Liling"
+date: "2024-12-01"
 format: 
   pdf:
     include-in-header: 
@@ -37,9 +37,11 @@ import time
 import datetime as dt
 import geopandas as gpd
 from shapely import wkt
+import altair_saver as saver
 from shapely.geometry import Point
 import numpy as np
 import json
+from scipy.stats.mstats import winsorize
 
 import warnings 
 warnings.filterwarnings('ignore')
@@ -50,44 +52,44 @@ alt.data_transformers.disable_max_rows()
 
 ## Data Cleaning and Benchmarking
 
-1. We collected data on City-owned land from the City of Chicago and property data from the Cook County Assessor’s Office, followed by initial data cleaning to prepare the datasets for analysis.
+1. We collected data on City-owned land from the *City of Chicago* and property data from the *Cook County Assessor’s Office*, followed by initial data cleaning to prepare the datasets for analysis.
 
 ```{python}
 # | eval: false
 
 # load the property data in cook county
-data_cook_county = pd.read_csv('/Users/aa/Documents/Q4/data_cook_county.csv')
+#data_cook_county = pd.read_csv('/Users/aa/Documents/Q4/data_cook_county.csv')
 
-# filter only data in Chicago
+# Filter only data in Chicago
 # Chicago zipcode start with '606' except Riverdale(60827) and Galewood(60707)
-data_cook_county['zip_code'] = data_cook_county['zip_code'].astype(str)
+#data_cook_county['zip_code'] = data_cook_county['zip_code'].astype(str)
 
-data_chi = data_cook_county[
-    (data_cook_county['zip_code'].str.startswith('606')) |
-    (data_cook_county['zip_code'] == '60827') |
-    (data_cook_county['zip_code'] == '60707')
-]
+#data_chi = data_cook_county[
+#    (data_cook_county['zip_code'].str.startswith('606')) |
+#    (data_cook_county['zip_code'] == '60827') |
+#    (data_cook_county['zip_code'] == '60707')
+#]
 
-# filter only data of vacant lands (property class code started with 1)
-data_chi_vacant = data_chi[data_chi['class'].str.startswith('1')]
+# Filter only data of vacant lands (property class code started with 1)
+#data_chi_vacant = data_chi[data_chi['class'].str.startswith('1')]
 
-# remove unneccessary columns
-selected_columns = [
-    'pin', 'pin10', 'tax_year', 'class', 'township_name', 'township_code',
-    'neighborhood_code', 'tax_district_code', 'zip_code', 'longitude', 'latitude',
-    'chicago_community_area_num', 'chicago_community_area_name', 'enterprise_zone_num'
-]
+# Remove unneccessary columns
+#selected_columns = [
+#    'pin', 'pin10', 'tax_year', 'class', 'township_name', 'township_code',
+#    'neighborhood_code', 'tax_district_code', 'zip_code', 'longitude', 'latitude',
+#    'chicago_community_area_num', 'chicago_community_area_name', 'enterprise_zone_num'
+#]
 
-data_chi_vacant = data_chi_vacant[selected_columns]
+#data_chi_vacant = data_chi_vacant[selected_columns]
 
-# save it to the repo
-data_chi_vacant.to_csv('/Users/aa/Documents/GitHub/final_project_klr/data/data_ccao.csv', index=False)
+# Save it as CSV file 'data_ccao.csv'
+#data_chi_vacant.to_csv('./data_ccao.csv', index=False)
 ```
 
 ```{python}
-# read in the data
-df_ccao = pd.read_csv('/Users/aa/Documents/GitHub/final_project_klr/data/data_ccao.csv')
-df_coc = pd.read_csv('/Users/aa/Documents/GitHub/final_project_klr/data/df_city_owned.csv')
+# Read in the data and merge
+df_ccao = pd.read_csv('./data_ccao.csv')
+df_coc = pd.read_csv('./df_city_owned.csv')
 ```
 
 ```{python}
@@ -100,7 +102,21 @@ df_coc = df_coc.dropna(subset=['Zip Code'])
 2. How many total sqft of vacant land in Chicago and how much of the value?
 
 ```{python}
-print(f"The total area of vacant land is {sum(df_coc['Sq. Ft.'])}")
+print(f"The total area of vacant land is {sum(df_coc['Sq. Ft.'])}")  # 13,318,362 Sq. Ft.
+```
+
+```{python}
+# Compute counts and average value for each community area
+top_community_areas = (
+    df_coc.groupby('Community Area Name')
+    .agg(counts=('Community Area Name', 'size'), avg_value=('Land Value (2022)', 'mean'))
+    .reset_index()
+    .sort_values('counts', ascending=False)
+    .head(10)  # Select top 10
+)
+
+# Filter the top 10 community area name
+top_10_community_names = top_community_areas['Community Area Name'].tolist()
 ```
 
 ```{python}
@@ -165,13 +181,12 @@ alt.layer(top_community_bar,
     width=300,
     height=300
 )
-
 ```
 
 
 3. Is all data in City of Chicago a subset of the Cook County Data?
 
-We find almost all the pin codes from the City of Chicago data is not in the Cook County data so we will combine the two dataset.
+We find almost all the pin codes from the City of Chicago data is not in the Cook County data, indicating that the CCAO data is highly likely to include privately-owned vacant lands (this was confirmed after plotting the data as a scatter plot and comparing it with the research data from Depaul). so we combine the two datasets.
 
 ```{python}
 # The 'pin' column in df_coc is not in the same format as that in ccao
@@ -184,7 +199,7 @@ missing_pins = set(df_coc['PIN']) - set(df_ccao['pin'])
 # Count the number of missing PINs
 missing_count = len(missing_pins)
 
-print(f"Number of PINs in df_coc['PIN'] not in df_ccao['pin']: {missing_count}")
+print(f"Number of PINs in df_coc['PIN'] not in df_ccao['pin']: {missing_count}")  # 10,024
 ```
 
 ```{python}
@@ -222,6 +237,9 @@ df_ccao['type'] = 'Private'
 
 ```{python}
 df = pd.concat([df_ccao, df_coc], axis=0).drop_duplicates(subset='pin')
+
+# Save the combined data as CSV file
+#df.to_csv('./combined_data.csv', index=False)
 ```
 
 ```{python}
@@ -291,58 +309,45 @@ scatter
 The analysis only looked at CTA train stations and not proximity to Metra stations or high-capacity bus routes as previous TOD incentives in Chicago have largely focused on areas near CTA train stations.
 
 ```{python}
-# Read the csv file
-df_city = pd.read_csv('City-Owned_Land_Inventory_20241130.csv')  # I just use the city-owned data here
-```
+# Advanced data cleaning and transformation
 
-# Some data cleaning progress
-```{python}
 # Filter out properties without zip codes
-df0 = df_city[~df_city['Zip Code'].isna()]
+df0 = df[~df['zip_code'].isna()]
 
 df0.columns = df0.columns.str.strip()
 
 # A quick check
 df0 = df0.copy()
-df0['Latitude'] = pd.to_numeric(df0['Latitude'], errors='coerce')
-df0['Longitude'] = pd.to_numeric(df0['Longitude'], errors='coerce')
+df0['latitude'] = pd.to_numeric(df0['latitude'], errors='coerce')
+df0['longitude'] = pd.to_numeric(df0['longitude'], errors='coerce')
 # print(df0.dtypes)
 
 # Transform data type
-df0['Zip Code'] = df0['Zip Code'].astype(int)
+df0['zip_code'] = df0['zip_code'].astype(int)
 
 # Check the dimensions
 print(df0.shape)
 print(df0.dtypes)
 ```
-```{python}
-# Filter by property status
-df1 = df0[df0['Property Status'] == 'Owned by City']
 
-# Check the dimensions
-print(df1.shape)
-```
-
-## Load data
 ```{python}
 # Read shapefile using GeoPandas
-shapefile_path2 = r"C:\Users\Yuzi\Documents\GitHub\VacantLots\ZIP Codes\geo_export.shp"
-gdf2 = gpd.read_file(shapefile_path2)
+gdf1 = gpd.read_file('ZIP Codes/geo_export.shp')
 
 # Transform data type
-gdf2['zip'] = pd.to_numeric(gdf2['zip'], errors='coerce').fillna(0).astype(int)
+gdf1['zip'] = pd.to_numeric(gdf1['zip'], errors='coerce').fillna(0).astype(int)
 
 # A quick check
-print(gdf2.head())
-print(gdf2.dtypes)
+print(gdf1.head())
+print(gdf1.dtypes)
 ```
 
 ```{python}
 # Copy the dataset
-df_vacant = df2.copy()
+df_vacant = df0.copy()
 
-# Ensure 'Zip Code' column is cleaned and valid
-df_vacant['Cleaned_Zip'] = df_vacant['Zip Code'].astype(str).str.zfill(5)  # Ensure Zip Codes are strings of 5 digits
+# Ensure 'zip_code' column is cleaned and valid
+df_vacant['Cleaned_Zip'] = df_vacant['zip_code'].astype(str).str.zfill(5)  # Ensure Zip Codes are strings of 5 digits
 
 # Drop rows with missing or invalid Zip Codes
 df_vacant_clean = df_vacant.dropna(subset=['Cleaned_Zip'])
@@ -353,31 +358,31 @@ zip_counts.columns = ['Zip', 'Vacant_Lots_Count']  # Rename columns for clarity
 
 # Check the first few rows of the counts DataFrame
 # print(zip_counts.head())
-
 ```
 
-```{python}
-# Read shapefile using GeoPandas
-shapefile_path2 = r"C:\Users\Yuzi\Documents\GitHub\VacantLots\ZIP Codes\geo_export.shp"
-geo_data = gpd.read_file(shapefile_path2)
-
-# A quick check
-print(geo_data.head())
-```
 ```{python}
 # Ensure 'zip' column in geo_data is cleaned for matching
-geo_data['zip'] = geo_data['zip'].astype(str).str.zfill(5)  # Ensure Zip Codes are strings of 5 digits
+gdf1['zip'] = gdf1['zip'].astype(str).str.zfill(5)  # Ensure Zip Codes are strings of 5 digits
 
 # Merge geographic data with the counts
-geo_data_counts = geo_data.merge(zip_counts, left_on='zip', right_on='Zip', how='left')
+gdf1_counts = gdf1.merge(zip_counts, left_on='zip', right_on='Zip', how='left')
 
 # Fill missing values for counts with 0
-geo_data_counts['Vacant_Lots_Count'] = geo_data_counts['Vacant_Lots_Count'].fillna(0)
+gdf1_counts['Vacant_Lots_Count'] = gdf1_counts['Vacant_Lots_Count'].fillna(0)
+```
+
+```{python}
+# Create a copy to drop geometry
+geo = gdf1_counts.copy()
+geo.drop('geometry', axis=1, inplace=True)
+
+# A quick check
+print(geo.head())
 ```
 
 ```{python}
 # Convert GeoDataFrame to JSON-compatible format
-geojson_data = geo_data_counts.to_crs(epsg=4326).to_json()  # Convert CRS to WGS84 for Altair compatibility
+geojson_data = gdf1_counts.to_crs(epsg=4326).to_json()  # Convert CRS to WGS84 for Altair compatibility
 
 # Create the base map layer
 base_map = alt.Chart(alt.Data(values=json.loads(geojson_data)['features'])).mark_geoshape(
@@ -422,38 +427,8 @@ final_map
 ```
 
 ```{python}
-# Read railLine data
-railLine_path = r"C:\Users\Yuzi\Documents\GitHub\VacantLots\CTA _RailLines\geo_export.shp"
-railLine_data = gpd.read_file(railLine_path)
-
-# Convert GeoPandas data to GeoJSON for Altair
-railLine_geojson = json.loads(railLine_data.to_crs(epsg=4326).to_json())
-
-# Create Altair layer for rail lines
-rail_lines_layer = alt.Chart(alt.Data(values=railLine_geojson['features'])).mark_geoshape(
-    stroke='orange',
-    strokeWidth=1
-).project(
-    type='albersUsa'  # Ensure projection matches the base map
-)
-
-# Combine final_map (base + choropleth) with rail lines
-combined_map = (final_map + rail_lines_layer).properties(
-    title={
-        'text': 'Vacant Lots and Rail Lines by Zip Code',
-        'fontSize': 16,
-        'anchor': 'middle'
-    }
-)
-
-# Show the combined map
-combined_map
-
-```
-```{python}
 # Load data and assign colors
-railLine_path = r"C:\Users\Yuzi\Documents\GitHub\VacantLots\CTA _RailLines\geo_export.shp"
-railLine_data = gpd.read_file(railLine_path)
+railLine_data = gpd.read_file('CTA _RailLines\geo_export.shp')
 color_mapping = {
     "ML": "gray",
     "BL": "blue",
@@ -483,21 +458,6 @@ rail_layer = alt.Chart(alt.Data(values=railLine_features)).mark_geoshape(
     type='albersUsa'
 )
 
-# Draw Choropleth
-geojson_data = geo_data_counts.to_crs(epsg=4326).to_json()
-choropleth = alt.Chart(alt.Data(values=json.loads(geojson_data)['features'])).mark_geoshape(
-    stroke='white',
-    strokeWidth=0.5
-).encode(
-    color=alt.Color('properties.Vacant_Lots_Count:Q', scale=alt.Scale(scheme='blues'), title='Vacant Lots Count'),
-    tooltip=[
-        alt.Tooltip('properties.zip:O', title='Zip Code'),
-        alt.Tooltip('properties.Vacant_Lots_Count:Q', title='Vacant Lots Count')
-    ]
-).project(
-    type='albersUsa'
-)
-
 # Combine layers
 final_map_combined = (choropleth + rail_layer).properties(
     title={
@@ -514,53 +474,66 @@ final_map_combined.show()
 
 ```
 
+
 ## 4.2 Racial Composition of top 5 zip codes with vacant lands (Zip code)
 
 ```{python}
 # read Chicago zip code shapefile
-gdf_zip = gpd.read_file('./data/Zip Codes/geo_export.shp')
+# gdf_zip = gpd.read_file('./data/Zip Codes/geo_export.shp')
 
-# read pop data
-df_pop = pd.read_csv('./data/Chicago_Population_Counts.csv')
+# Read the population data
+df_pop = pd.read_csv('./Chicago_Population_Counts.csv')
 
-# filter to the latest year (2021) in population census data
+# Filter to the latest year (2021) in population census data
 df_pop_2021 = df_pop[df_pop['Year']==2021]
 
-# rename columns
+# Rename columns
 df_pop_2021 = df_pop_2021.rename(columns={'Geography': 'zip','Population - Total': 'total_population'})
 ```
 ```{python}
-# count vacant lands by zip code
+# Count vacant lands by zip code
 vacant_land_counts = df.groupby('zip_code').size().reset_index(name='vacant_land_count')
-# sort to top 5 zip codes with most vacant lands 
+
+# Sort to top 5 zip codes with most vacant lands 
 top5_zip_vacant = vacant_land_counts.sort_values(by='vacant_land_count', ascending=False).head() 
-# convert zip_code to string
+
+# Convert zip_code to string and print
 top5_zip_vacant['zip_code'] = top5_zip_vacant['zip_code'].apply(lambda x: str(int(x)))
+
+# Reset index
+top5_zip_vacant = top5_zip_vacant.reset_index(drop=True)
+
 print(top5_zip_vacant)
 
+# 1. 60621
+# 2. 60636
+# 3. 60609
+# 4. 60628
+# 5. 60624
 ```
 
 ```{python}
-# calculate the percentage of population by race in each zip code
+# Calculate the percentage of population by race in each zip code
 for col in df_pop_2021.columns[20:25]: 
     df_pop_2021[f'{col} Percentage'] = (df_pop_2021[col] / df_pop_2021['total_population']) * 100
 ```
 
 ```{python}
+# Reshape the DataFrame from wide format to long format
 df_pop_pct = df_pop_2021.melt(id_vars=['zip'], 
                   value_vars=[col for col in df_pop_2021.columns if 'Percentage' in col], 
                   var_name='Race', 
                   value_name='Percentage')
+
 # Clean up column names 
 df_pop_pct['Race'] = df_pop_pct['Race'].str.replace('Population - ', '').str.replace(' Non-Latinx', '')
 
-# filter to racial percentage of top 5 zip codes with most vacant lands
+# Filter to racial percentage of top 5 zip codes with most vacant lands
 df_pop_pct_top5 = df_pop_pct[df_pop_pct['zip'].isin(top5_zip_vacant['zip_code'])]
-
 ```
 
 ```{python}
-# plot the racial composition of those zip codes
+# Plot the racial composition of those zip codes
 alt.Chart(df_pop_pct_top5).mark_bar().encode(
     x=alt.X('zip:N', title='Zip Code'),
     y=alt.Y('Percentage:Q', title='Percentage of Population'),
@@ -572,62 +545,70 @@ alt.Chart(df_pop_pct_top5).mark_bar().encode(
     title='Racial Composition of Top 5 Zip Codes with most vacant lands'
 )
 ```
+
+
 ## 4.3 Crime Rate (Zip Code)
 
 ```{python}
-# read crime data for 2023
-df_crime = pd.read_csv('./data/Crimes_2023.csv')
+# Read crime data for 2023
+df_crime = pd.read_csv('./Crimes_2023.csv')
 ```
 
 ```{python}
-#### identify the zip code for each crime from its latitude&longitude
+# Identify the zip code for each crime from its latitude&longitude
 
-# drop rows with missing locations
+# Drop rows with missing locations
 df_crime = df_crime.dropna(subset=['Latitude', 'Longitude'])
 
 # Create a 'geometry' column by applying Point to each latitude and longitude
 df_crime['geometry'] = df_crime.apply(lambda row: Point(row['Longitude'], row['Latitude']), axis=1)
 
-# convert df_crime to a geodataframe
+# Convert df_crime to a geodataframe
 gdf_crime = gpd.GeoDataFrame(df_crime, geometry='geometry', crs='EPSG:4326')
 
 # Ensure zip code GeoDataFrame is also in the same crs
-gdf_zip = gdf_zip.to_crs('EPSG:4326')
+gdf1 = gdf1.to_crs('EPSG:4326')
 
 # Spatial join to assign zip codes to crimes
-gdf_crime = gpd.sjoin(gdf_crime, gdf_zip, how='left', predicate='within')
+gdf_crime = gpd.sjoin(gdf_crime, gdf1, how='left', predicate='within')
 
+# A quick check
 gdf_crime.head()
+
+# Save as GeoJSON file
+# gdf_crime.to_file("crime_data.shp", driver="ESRI Shapefile")
 ```
 
 ```{python}
+# Read shapefile using GeoPandas
+#gdf_crime = gpd.read_file('Crime Data/crime_data.shp')
 crime_count_zip = gdf_crime.groupby('zip').size().reset_index(name='crime_count')
 ```
 
 ```{python}
 # Merge the crime count data with the population data (2021) using the correct column
-
 df_crime_rate = crime_count_zip.merge(df_pop_2021[['zip','total_population']], on='zip', how='left')
 ```
 
 ```{python}
 ## there is no population data on zip code 60666 --> might have to try the full census data
-df_pop[df_pop['Geography']==60666]## delete or not?
+#df_pop[df_pop['Geography']==60666]## delete or not?
 ```
 
 ```{python}
 # Calculate the crime rate per 1,000 people
 df_crime_rate['crime_rate'] = df_crime_rate['crime_count'] / df_crime_rate['total_population'] * 1000
 
-# replace inf with na
+# Replace inf with na
 df_crime_rate['crime_rate'] = df_crime_rate['crime_rate'].replace([float('inf'), -float('inf')], float('nan'))
 
 df_crime_rate
 ```
 
 ```{python}
-# merge with zip shapefile
-gdf_crime_rate = gdf_zip.merge(df_crime_rate, on='zip', how='left')
+# Merge with zip shapefile
+gdf_crime_rate = gdf1.merge(df_crime_rate, on='zip', how='left')
+
 # Fill missing crime rate with 0
 gdf_crime_rate['crime_rate'] = gdf_crime_rate['crime_rate'].fillna(0).astype(int)
 
@@ -644,9 +625,14 @@ gdf_crime_rate['crime_rate_windsorized'] = winsorize(
 # Print before and after comparison
 print(gdf_crime_rate[['crime_rate', 'crime_rate_windsorized']].describe())
 
+# Save as shp file
+#gdf_crime_rate.to_file("crime_rate_data.shp", driver="ESRI Shapefile")
 ```
 
 ```{python}
+# Read shapefile using GeoPandas
+#gdf_crime_rate = gpd.read_file('crime_rate/crime_rate_data.shp')
+
 crime_rate_map = alt.Chart(gdf_crime_rate
 ).mark_geoshape(
     stroke='black',
@@ -665,8 +651,6 @@ crime_rate_map = alt.Chart(gdf_crime_rate
 
 crime_rate_map
 ```
-
-
 
 ```{python}
 # Combine the choropleth map and scatter layers
@@ -688,11 +672,11 @@ combined_map_crime
 ## 4.4 Income level (Community)
 
 ```{python}
-# read the Chicago Community Shapefile
-gdf = gpd.read_file('./VacantLots/CommaArea/CommAreas.shp')
+# Read the Chicago Community Shapefile
+gdf = gpd.read_file('./CommaArea/CommAreas.shp')
 
-# read Social Economic file
-df_se = pd.read_csv('./data/socioeconomic.csv')
+# Read Social Economic file
+df_se = pd.read_csv('./socioeconomic.csv')
 
 # Rename the column in df_se
 df_se = df_se.rename(columns={'Community Area Number': 'AREA_NUMBE', 
@@ -715,6 +699,14 @@ gdf = gdf.drop(columns=['centroid'])
 ```{python}
 # Merge the shapefile GeoDataFrame with the crime data DataFrame
 gdf_merged = gdf.merge(df_se, on='AREA_NUMBE', how='left')
+
+# Save as shp file
+#gdf_merged.to_file("income_data.shp", driver="ESRI Shapefile")
+```
+
+```{python}
+# Read shapefile using GeoPandas
+#gdf_merged = gpd.read_file('Income/income_data.shp')
 
 # Convert the GeoDataFrame to GeoJSON format for Altair
 gdf_merged_json = json.loads(gdf_merged.to_crs(epsg=4326).to_json())
@@ -802,10 +794,11 @@ combined_map_unemploy = (chro_map_unemploy  + scatter).properties(
 combined_map_unemploy
 ```
 
+
 ## 4.6 Business Density (Zip Code)
 
 ```{python}
-# read business license data for 2023
+# Read business license data for 2023
 # We will use the count of business licences by each zip code as the indicator of business density 
 df_busn = pd.read_csv('./data/business_license_2023.csv')
 
@@ -869,7 +862,9 @@ combined_map_busn = (busn_map + scatter).properties(
 # Display the combined map
 combined_map_busn
 ```
-# 4.x Population (Zip Code)
+
+
+# 4.7 Population (Zip Code)
 
 ```{python}
 
