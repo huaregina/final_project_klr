@@ -45,7 +45,8 @@ from scipy.stats.mstats import winsorize
 
 import warnings 
 warnings.filterwarnings('ignore')
-alt.renderers.enable("png")
+alt.renderers.enable('png')
+alt.renderers.enable('html')
 alt.data_transformers.disable_max_rows() 
 ```
 
@@ -87,9 +88,12 @@ alt.data_transformers.disable_max_rows()
 ```
 
 ```{python}
+print(os.getcwd())
+```
+```{python}
 # Read in the data and merge
-df_ccao = pd.read_csv('./data_ccao.csv')
-df_coc = pd.read_csv('./df_city_owned.csv')
+df_ccao = pd.read_csv('./data/data_ccao.csv')
+df_coc = pd.read_csv('./data/df_city_owned.csv')
 ```
 
 ```{python}
@@ -291,7 +295,8 @@ scatter_bin
 ```{python}
 scatter = alt.Chart(df).mark_point(size=0.3, filled=True, color='blue').encode(
     longitude='longitude',
-    latitude='latitude'
+    latitude='latitude',
+    tooltip=['latitude:Q', 'longitude:Q', 'chicago_community_area_name:N', 'zip_code:N' ]
 ).project(
     type='identity',
     reflectY=True
@@ -301,6 +306,7 @@ scatter = alt.Chart(df).mark_point(size=0.3, filled=True, color='blue').encode(
 
 scatter
 ```
+
 
 # 4. How is vacant lots related with other characteristics of the community?
 
@@ -332,7 +338,7 @@ print(df0.dtypes)
 
 ```{python}
 # Read shapefile using GeoPandas
-gdf1 = gpd.read_file('ZIP Codes/geo_export.shp')
+gdf1 = gpd.read_file('./data/ZIP Codes/geo_export.shp')
 
 # Transform data type
 gdf1['zip'] = pd.to_numeric(gdf1['zip'], errors='coerce').fillna(0).astype(int)
@@ -428,7 +434,7 @@ final_map
 
 ```{python}
 # Load data and assign colors
-railLine_data = gpd.read_file('CTA _RailLines\geo_export.shp')
+railLine_data = gpd.read_file('./data/CTA _RailLines/geo_export.shp')
 color_mapping = {
     "ML": "gray",
     "BL": "blue",
@@ -482,7 +488,7 @@ final_map_combined.show()
 # gdf_zip = gpd.read_file('./data/Zip Codes/geo_export.shp')
 
 # Read the population data
-df_pop = pd.read_csv('./Chicago_Population_Counts.csv')
+df_pop = pd.read_csv('./data/Chicago_Population_Counts.csv')
 
 # Filter to the latest year (2021) in population census data
 df_pop_2021 = df_pop[df_pop['Year']==2021]
@@ -551,7 +557,7 @@ alt.Chart(df_pop_pct_top5).mark_bar().encode(
 
 ```{python}
 # Read crime data for 2023
-df_crime = pd.read_csv('./Crimes_2023.csv')
+df_crime = pd.read_csv('./data/Crimes_2023.csv')
 ```
 
 ```{python}

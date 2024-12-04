@@ -57,13 +57,16 @@ df = pd.read_csv('./combined_data.csv')
 ```{python}
 scatter = alt.Chart(df).mark_point(size=0.3, filled=True, color='blue').encode(
     longitude='longitude',
-    latitude='latitude'
+    latitude='latitude',
+    tooltip=['latitude:Q', 'longitude:Q', 'chicago_community_area_name:N', 'zip_code:N' ]
 ).project(
     type='identity',
     reflectY=True
 ).properties(
     title='Vacant Land Locations'
 )
+
+scatter
 ```
 
 # How is vacant lots related with other characteristics of the community?
