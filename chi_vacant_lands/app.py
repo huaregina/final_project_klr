@@ -18,9 +18,21 @@ app_ui = ui.page_fluid(
                 "Select Data:", 
                 choices=["Crime Rate", "Income", "Unemployment", "Business Density", "Population"]
             ),
+            ui.input_switch(
+                id="toggle_scatter",
+                label="Show Vacant Lands:",
+                value=False  # Default state: off
+            ),
+            ui.input_slider(
+                id="scatter_size",
+                label="Adjust Point Size:",
+                value=0.6,
+                min=0.3,
+                max=1
+            ),
             ui.input_radio_buttons(
                 "ownership_filter", 
-                "Filter by Ownership:", 
+                "Filter by Vacant Land Ownership:", 
                 choices=["All", "City-Owned", "Non-City-Owned"], 
                 selected="All"
             )
@@ -65,12 +77,13 @@ def server(input, output, session):
     def filtered_layers():
         # Load scatter data
         df = pd.read_csv('./combined_data.csv')
+        scatter_size = input.scatter_size()
 
         # Apply ownership filter
         ownership_filter = input.ownership_filter()
 
         city_owned_layer = alt.Chart(df[df['type'] == 'City-Owned']).mark_point(
-            size=1, filled=True, color='purple'
+            size=scatter_size, filled=True, color='purple'
         ).encode(
             longitude='longitude',
             latitude='latitude',
@@ -81,7 +94,7 @@ def server(input, output, session):
         )
 
         non_city_owned_layer = alt.Chart(df[df['type'] == 'Private']).mark_point(
-            size=1, filled=True, color='green'
+            size=scatter_size, filled=True, color='green'
         ).encode(
             longitude='longitude',
             latitude='latitude',
@@ -100,6 +113,7 @@ def server(input, output, session):
         
     @render_altair
     def map():
+        toggle_scatter = input.toggle_scatter()
         geojson_data, color_field, title = processed_data()
 
         # Create the base choropleth map
@@ -124,8 +138,11 @@ def server(input, output, session):
         # Add filtered layers
         filtered_layer = filtered_layers()
 
-        # layer the map and scatter plot
-        layered_chart = choropleth + filtered_layer
+        # Combine scatter plot and choropleth based on toggle
+        if toggle_scatter:
+            layered_chart = choropleth + filtered_layer
+        else:
+            layered_chart = choropleth  # Only show choropleth
 
         return layered_chart
 
