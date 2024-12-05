@@ -106,7 +106,7 @@ df_coc = df_coc.dropna(subset=['Zip Code'])
 2. How many total sqft of City-owned vacant land in Chicago and how much of the value?
 
 ```{python}
-print(f"The total area of vacant land is {sum(df_coc['Sq. Ft.'])}")  # 13,318,362 Sq. Ft.
+print(f"The total area of all the city owned vacant land is {sum(df_coc['Sq. Ft.'])}")  # 13,318,362 Sq. Ft.
 ```
 
 ```{python}
@@ -334,7 +334,7 @@ scatter_bin
 ## Choice2: By raw data points
 
 ```{python}
-scatter = alt.Chart(df).mark_point(size=0.3, filled=True, color='blue').encode(
+scatter = alt.Chart(df).mark_point(size=0.5, filled=True, color='blue').encode(
     longitude='longitude',
     latitude='latitude',
     tooltip=['latitude:Q', 'longitude:Q', 'chicago_community_area_name:N', 'zip_code:N' ]
@@ -346,6 +346,44 @@ scatter = alt.Chart(df).mark_point(size=0.3, filled=True, color='blue').encode(
 )
 
 scatter
+```
+
+```{python}
+# Plot the scatter plot of city-owned vacant lots
+
+scatter_city = alt.Chart(df[df['type']=='City-Owned']).mark_point(size=0.5, filled=True, color='purple').encode(
+    longitude='longitude',
+    latitude='latitude',
+    tooltip=['latitude:Q', 'longitude:Q', 'chicago_community_area_name:N', 'zip_code:N' ]
+).project(
+    type='identity',
+    reflectY=True
+).properties(
+    title='City-Owned Vacant Land Locations'
+)
+
+scatter_city
+```
+```{python}
+# Plot the scatter plot of non city-owned vacant lots
+scatter_private = alt.Chart(df[df['type']=='Private']).mark_point(size=0.5, filled=True, color='green').encode(
+    longitude='longitude',
+    latitude='latitude',
+    tooltip=['latitude:Q', 'longitude:Q', 'chicago_community_area_name:N', 'zip_code:N' ]
+).project(
+    type='identity',
+    reflectY=True
+).properties(
+    title='City-Owned Vacant Land Locations'
+)
+
+scatter_private
+```
+
+```{python}
+# map both together (in differenct colors)
+scatter_all = scatter_private + scatter_city 
+scatter_all
 ```
 
 
@@ -437,7 +475,7 @@ base_map = alt.Chart(alt.Data(values=json.loads(geojson_data)['features'])).mark
     stroke='gray',
     strokeWidth=0.5
 ).project(
-    type='albersUsa'  # Use Albers USA projection for visualization
+    type='identity'  # Use Albers USA projection for visualization
 ).properties(
     width=600,
     height=400
