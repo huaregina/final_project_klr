@@ -42,7 +42,6 @@ def server(input, output, session):
     def processed_data():
         selected_data = input.data_selection()
         if selected_data == "Crime Rate":
-            # Process crime rate data
             gdf_crime = gpd.read_file('Crime Data/crime_data.shp')
             crime_count_zip = gdf_crime.groupby('zip').size().reset_index(name='crime_count')
             df_crime_rate = crime_count_zip.merge(
@@ -50,7 +49,8 @@ def server(input, output, session):
             )
             df_crime_rate['crime_rate'] = (
                 df_crime_rate['crime_count'] / df_crime_rate['total_population'] * 1000
-            ).fillna(0)
+            ).replace([float('inf'), -float('inf')], float('nan')).fillna(0)
+            
             gdf_combined = gdf1.merge(df_crime_rate, on='zip', how='left')
             gdf_combined['crime_rate_windsorized'] = winsorize(
                 gdf_combined['crime_rate'], limits=(0.01, 0.96)
@@ -60,7 +60,7 @@ def server(input, output, session):
             gdf_income = gpd.read_file('Income/income_data.shp')
             return gdf_income, "properties.INCOME", "Per Capita Income"
         elif selected_data == "Unemployment Rate":
-            gdf_unemployment = gpd.read_file('Unemployment/unemployment_data.shp')
+            gdf_unemployment = gpd.read_file('Income/income_data.shp')
             return gdf_unemployment, "properties.UNEMPLOYME", "Unemployment Rate"
         elif selected_data == "Population":
             gdf_population = gdf1.merge(df_pop_2021, on='zip', how='left')
@@ -69,9 +69,11 @@ def server(input, output, session):
     @render_altair
     def combined_map():
         gdf_combined, color_field, title = processed_data()
-        base_map = alt.Chart(
-            alt.Data(values=json.loads(gdf_combined.to_crs(epsg=4326).to_json())["features"])
-        ).mark_geoshape(
+        # Convert GeoDataFrame to GeoJSON
+        geojson_data = json.loads(gdf_combined.to_crs(epsg=4326).to_json())["features"]
+
+        # Create Base Map
+        base_map = alt.Chart(alt.Data(values=geojson_data)).mark_geoshape(
             stroke="white", strokeWidth=0.5
         ).encode(
             color=alt.Color(color_field + ":Q", scale=alt.Scale(scheme="bluegreen"), title=title),
@@ -81,6 +83,8 @@ def server(input, output, session):
         ).properties(
             width=600, height=400
         )
+
+        # Overlay Scatter Plot for Vacant Lots
         scatter = alt.Chart(df).mark_point(size=3, color="red").encode(
             longitude="longitude:Q", latitude="latitude:Q"
         )
