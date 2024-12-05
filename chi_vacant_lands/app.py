@@ -14,7 +14,7 @@ app_ui = ui.page_fluid(
     ui.layout_sidebar(
         ui.sidebar(
             ui.input_select(
-                "data_selection", "Select Data:", choices=["Crime Rate", "Income"]
+                "data_selection", "Select Data:", choices=["Crime Rate", "Income", "Unemployment", "Business Density"]
             )
         )
     ),
@@ -36,6 +36,16 @@ def server(input, output, session):
             with open('income_data.geojson') as f:
                 geojson_data = json.load(f)
             return geojson_data, "properties.INCOME", "Per Capita Income"
+        elif selected_data == "Unemployment":
+            # Load the income GeoJSON
+            with open('income_data.geojson') as f:
+                geojson_data = json.load(f)
+            return geojson_data, "properties.UNEMPLOYMENT", "Unemployment Rate"
+        elif selected_data == "Business Density":
+            # Load the income GeoJSON
+            with open('business_data.geojson') as f:
+                geojson_data = json.load(f)
+            return geojson_data, "properties.business_density", "Business Denisty"
         return None, None, None
 
     @render_altair
@@ -45,7 +55,7 @@ def server(input, output, session):
         # load the scatter data
         df = pd.read_csv('./combined_data.csv')
 
-        scatter = alt.Chart(df).mark_point(size=0.3, filled=True, color='blue').encode(
+        scatter = alt.Chart(df).mark_point(size=0.6, filled=True, color='blue').encode(
             longitude='longitude',
             latitude='latitude',
             tooltip=['latitude:Q', 'longitude:Q', 'chicago_community_area_name:N', 'zip_code:N' ]
@@ -77,7 +87,7 @@ def server(input, output, session):
 
 
         # layer the map and scatter plot
-        layered_chart = scatter+ choropleth
+        layered_chart = choropleth + scatter
 
         return layered_chart
 

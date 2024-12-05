@@ -886,6 +886,9 @@ gdf_busn['business_density'] = gdf_busn['business_density'].fillna(0).astype(int
 ```
 
 ```{python}
+
+```
+```{python}
 busn_map = alt.Chart(gdf_busn
 ).mark_geoshape(
   # Default fill for all areas
