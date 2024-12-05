@@ -290,6 +290,10 @@ scatter_bin = alt.Chart(scatter_data).mark_circle(color='blue', opacity=0.5).enc
 scatter_bin
 ```
 
+```{python}
+# scatter_data.to_csv('scatter_data.csv', index=False)
+```
+
 ## Choice2: By raw data points
 
 ```{python}
@@ -636,6 +640,10 @@ print(gdf_crime_rate[['crime_rate', 'crime_rate_windsorized']].describe())
 ```
 
 ```{python}
+# gdf_crime_rate.to_file("crime_rate_data.geojson", driver="GeoJSON")
+```
+
+```{python}
 # Read shapefile using GeoPandas
 #gdf_crime_rate = gpd.read_file('crime_rate/crime_rate_data.shp')
 
@@ -679,10 +687,10 @@ combined_map_crime
 
 ```{python}
 # Read the Chicago Community Shapefile
-gdf = gpd.read_file('./CommaArea/CommAreas.shp')
+gdf = gpd.read_file('./VacantLots/CommaArea/CommAreas.shp')
 
 # Read Social Economic file
-df_se = pd.read_csv('./socioeconomic.csv')
+df_se = pd.read_csv('./data/socioeconomic.csv')
 
 # Rename the column in df_se
 df_se = df_se.rename(columns={'Community Area Number': 'AREA_NUMBE', 
@@ -708,6 +716,10 @@ gdf_merged = gdf.merge(df_se, on='AREA_NUMBE', how='left')
 
 # Save as shp file
 #gdf_merged.to_file("income_data.shp", driver="ESRI Shapefile")
+```
+
+```{python}
+# gdf_merged.to_file("income_data.geojson", driver="GeoJSON")
 ```
 
 ```{python}
