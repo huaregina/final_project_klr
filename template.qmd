@@ -218,6 +218,9 @@ selected_columns_ccao = [
 ]
 
 df_ccao = df_ccao[selected_columns_ccao]
+
+# After inspection, we found that some zip codes have some area outside the city of chicago border which do not have chicago community names, so we will drop the lots without the community name
+df_ccao = df_ccao.dropna(subset=['chicago_community_area_name'])
 ```
 
 ```{python}
@@ -243,7 +246,7 @@ df_ccao['type'] = 'Private'
 df = pd.concat([df_ccao, df_coc], axis=0).drop_duplicates(subset='pin')
 
 # Save the combined data as CSV file
-#df.to_csv('./combined_data.csv', index=False)
+# df.to_csv('./combined_data.csv', index=False)
 ```
 
 ```{python}
@@ -355,7 +358,7 @@ scatter
 ```{python}
 # Plot the scatter plot of city-owned vacant lots
 
-scatter_city = alt.Chart(df[df['type']=='City-Owned']).mark_point(size=0.5, filled=True, color='purple').encode(
+scatter_city = alt.Chart(df[df['type']=='City-Owned']).mark_point(size=0.6, filled=True, color='purple').encode(
     longitude='longitude',
     latitude='latitude',
     tooltip=['latitude:Q', 'longitude:Q', 'chicago_community_area_name:N', 'zip_code:N' ]
@@ -370,7 +373,7 @@ scatter_city
 ```
 ```{python}
 # Plot the scatter plot of non city-owned vacant lots
-scatter_private = alt.Chart(df[df['type']=='Private']).mark_point(size=0.5, filled=True, color='green').encode(
+scatter_private = alt.Chart(df[df['type']=='Private']).mark_point(size=0.6, filled=True, color='green').encode(
     longitude='longitude',
     latitude='latitude',
     tooltip=['latitude:Q', 'longitude:Q', 'chicago_community_area_name:N', 'zip_code:N' ]
@@ -378,7 +381,7 @@ scatter_private = alt.Chart(df[df['type']=='Private']).mark_point(size=0.5, fill
     type='identity',
     reflectY=True
 ).properties(
-    title='City-Owned Vacant Land Locations'
+    title='Non City-Owned Vacant Land Locations'
 )
 
 scatter_private
@@ -388,6 +391,14 @@ scatter_private
 # map both together (in differenct colors)
 scatter_all = scatter_private + scatter_city 
 scatter_all
+```
+
+```{python}
+# static map for vacant lots
+city_vacant_map = base_map + scatter_city
+private_vacant_map = base_map + scatter_private
+all_vacant_map = base_map + scatter_all
+city_vacant_map | private_vacant_map
 ```
 
 
@@ -479,7 +490,8 @@ base_map = alt.Chart(alt.Data(values=json.loads(geojson_data)['features'])).mark
     stroke='gray',
     strokeWidth=0.5
 ).project(
-    type='identity'  # Use Albers USA projection for visualization
+    type='identity',
+    reflectY=True
 ).properties(
     width=600,
     height=400
@@ -496,7 +508,8 @@ choropleth = alt.Chart(alt.Data(values=json.loads(geojson_data)['features'])).ma
         alt.Tooltip('properties.Vacant_Lots_Count:Q', title='Vacant Lots Count')
     ]
 ).project(
-    type='albersUsa'
+    type='identity',
+    reflectY=True
 )
 
 # Combine base map and choropleth
