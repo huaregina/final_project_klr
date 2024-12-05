@@ -11,8 +11,9 @@ alt.data_transformers.disable_max_rows()
 # UI Layout
 app_ui = ui.page_fluid(
     ui.panel_title("Vacant Land Distribution and Socioeconomic Features in Chicago"),
-    ui.layout_sidebar(
-        ui.sidebar(
+    ui.row(
+        ui.column(
+            3,  # First column takes 6/12 width for the main inputs
             ui.input_select(
                 "data_selection", 
                 "Select Data:", 
@@ -20,22 +21,36 @@ app_ui = ui.page_fluid(
             ),
             ui.input_switch(
                 id="toggle_scatter",
-                label="Show Vacant Lands:",
+                label="Show Vacant Lands",
                 value=False  # Default state: off
-            ),
-            ui.input_slider(
-                id="scatter_size",
-                label="Adjust Point Size:",
-                value=0.6,
-                min=0.3,
-                max=1
-            ),
-            ui.input_radio_buttons(
-                "ownership_filter", 
-                "Filter by Vacant Land Ownership:", 
-                choices=["All", "City-Owned", "Non-City-Owned"], 
-                selected="All"
             )
+        ),
+        ui.column(
+            3,  # Second column takes 6/12 width for the conditional panel
+            ui.panel_conditional(
+                "input.toggle_scatter",  # Show when toggle_scatter is True
+                ui.input_slider(
+                    id="scatter_size",
+                    label="Adjust Point Size:",
+                    value=0.6,
+                    min=0.3,
+                    max=1
+                ),
+                ui.input_radio_buttons(
+                    "ownership_filter", 
+                    "Filter by Vacant Land Ownership:", 
+                    choices=["All", "City-Owned", "Non-City-Owned"], 
+                    selected="All"
+                )
+            )
+        ),
+        ui.column(
+            6,  # Column for the card
+            ui.card(
+                ui.h4("TOTAL VACANT LAND COUNT IN CHICAGO", style="color: black; margin: 0; font-size: 0.9em;"),
+                ui.h1("40,036", style="color: white; font-size: 2.5em; margin: 0;"),
+                style="background-color: lightcoral; padding: 10px; text-align: center; border-radius: 8px; width: 200px; height: 200px; margin-left: -20px;"
+                )
         )
     ),
     output_widget("map")     
@@ -131,7 +146,7 @@ def server(input, output, session):
             type='identity',
             reflectY=True
         ).properties(
-            width=400,
+            width=700,
             height=400
         )
 
