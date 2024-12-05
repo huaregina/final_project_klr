@@ -14,7 +14,15 @@ app_ui = ui.page_fluid(
     ui.layout_sidebar(
         ui.sidebar(
             ui.input_select(
-                "data_selection", "Select Data:", choices=["Crime Rate", "Income", "Unemployment", "Business Density", "Population"]
+                "data_selection", 
+                "Select Data:", 
+                choices=["Crime Rate", "Income", "Unemployment", "Business Density", "Population"]
+            ),
+            ui.input_radio_buttons(
+                "ownership_filter", 
+                "Filter by Ownership:", 
+                choices=["All", "City-Owned", "Non-City-Owned"], 
+                selected="All"
             )
         )
     ),
@@ -53,23 +61,46 @@ def server(input, output, session):
             return geojson_data, "properties.total_population", "Population"
         return None, None, None
 
+    @reactive.Calc
+    def filtered_layers():
+        # Load scatter data
+        df = pd.read_csv('./combined_data.csv')
+
+        # Apply ownership filter
+        ownership_filter = input.ownership_filter()
+
+        city_owned_layer = alt.Chart(df[df['type'] == 'City-Owned']).mark_point(
+            size=1, filled=True, color='purple'
+        ).encode(
+            longitude='longitude',
+            latitude='latitude',
+            tooltip=['latitude:Q', 'longitude:Q', 'chicago_community_area_name:N', 'zip_code:N']
+        ).project(
+            type='identity',
+            reflectY=True
+        )
+
+        non_city_owned_layer = alt.Chart(df[df['type'] == 'Private']).mark_point(
+            size=1, filled=True, color='green'
+        ).encode(
+            longitude='longitude',
+            latitude='latitude',
+            tooltip=['latitude:Q', 'longitude:Q', 'chicago_community_area_name:N', 'zip_code:N']
+        ).project(
+            type='identity',
+            reflectY=True
+        )
+
+        if ownership_filter == "City-Owned":
+            return city_owned_layer
+        elif ownership_filter == "Non-City-Owned":
+            return non_city_owned_layer
+        else:  # All
+            return non_city_owned_layer + city_owned_layer
+        
     @render_altair
     def map():
         geojson_data, color_field, title = processed_data()
-        
-        # load the scatter data
-        df = pd.read_csv('./combined_data.csv')
-
-        scatter = alt.Chart(df).mark_point(size=0.6, filled=True, color='blue').encode(
-            longitude='longitude',
-            latitude='latitude',
-            tooltip=['latitude:Q', 'longitude:Q', 'chicago_community_area_name:N', 'zip_code:N' ]
-            ).project(
-                type='identity',
-                reflectY=True
-                ).properties(
-                    title='Vacant Land Locations'
-                    )
 
         # Create the base choropleth map
         choropleth = alt.Chart(alt.Data(values=geojson_data['features'])).mark_geoshape(
@@ -90,9 +121,11 @@ def server(input, output, session):
             height=400
         )
 
+        # Add filtered layers
+        filtered_layer = filtered_layers()
 
         # layer the map and scatter plot
-        layered_chart = choropleth + scatter
+        layered_chart = choropleth + filtered_layer
 
         return layered_chart
 
