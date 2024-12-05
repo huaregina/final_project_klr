@@ -103,7 +103,7 @@ df_coc = df_coc.dropna(subset=['Zip Code'])
 ```
 
 
-2. How many total sqft of vacant land in Chicago and how much of the value?
+2. How many total sqft of City-owned vacant land in Chicago and how much of the value?
 
 ```{python}
 print(f"The total area of vacant land is {sum(df_coc['Sq. Ft.'])}")  # 13,318,362 Sq. Ft.
@@ -135,7 +135,7 @@ top_community_areas = (
 
 # Create a bar chart for counts
 top_community_bar = alt.Chart(top_community_areas).mark_bar(color='rgb(151, 188, 193)').encode(
-    x=alt.X('counts:Q', title='Count', axis=alt.Axis(titleFontSize=12)),
+    x=alt.X('counts:Q', title='Number of Vacant Lots', axis=alt.Axis(titleFontSize=12)),
     y=alt.Y('Community Area Name:N', sort='-x', title='Community Area Name'),
     tooltip=['Community Area Name', 'counts']
 )
@@ -181,7 +181,7 @@ alt.layer(top_community_bar,
     y='shared',  # Share the y-axis between the bar and line charts
     x='independent'  # Use independent x-axes
 ).properties(
-    title='Top 15 Community Areas by Counts and Average Value',
+    title='Top 15 Community Areas by City-Owned Vacant Lots and Average Lot Value',
     width=300,
     height=300
 )
@@ -248,6 +248,47 @@ df = pd.concat([df_ccao, df_coc], axis=0).drop_duplicates(subset='pin')
 
 ```{python}
 df.head()
+```
+
+```{python}
+# Aggregate data by community area and type
+vacant_counts_community_by_owner = (
+    df.groupby(['chicago_community_area_name', 'type'])  # Group by community area and type
+    .size()  # Count rows in each group
+    .reset_index(name='counts')  # Convert Series to DataFrame with column name 'counts'
+)
+
+# Calculate total vacant lots per community area by summing counts for both types
+total_counts_vacant = (
+    vacant_counts_community_by_owner.groupby('chicago_community_area_name')['counts']
+    .sum()
+    .reset_index(name='total_counts')
+)
+
+# Get the top 15 community areas by total vacant lots
+top_community_total = (
+    total_counts_vacant.sort_values('total_counts', ascending=False)
+    .head(15)
+    .chicago_community_area_name
+)
+
+# Filter the community area vacant lots data to include only the top 15 areas
+top_community_vacant = vacant_counts_community_by_owner[
+    vacant_counts_community_by_owner['chicago_community_area_name'].isin(top_community_total)
+]
+# Create a stacked bar chart
+top_community_stacked_bar = alt.Chart(top_community_vacant).mark_bar().encode(
+    x=alt.X('counts:Q', title='Number of Vacant Lots', axis=alt.Axis(titleFontSize=12)),
+    y=alt.Y('chicago_community_area_name:N', sort='-x', title='Community Area Name'),
+    color=alt.Color('type:N', title='Lot Type', scale=alt.Scale(domain=['Private', 'City-Owned'], range=['#FFB6C1', 'rgb(151, 188, 193)'])),
+    tooltip=['chicago_community_area_name', 'type', 'counts']
+).properties(
+    title='Top 15 Community Areas by Total Vacant Lots'
+)
+
+top_community_stacked_bar
+
+
 ```
 
 
@@ -536,7 +577,8 @@ df_pop_pct = df_pop_2021.melt(id_vars=['zip'],
                   value_name='Percentage')
 
 # Clean up column names 
-df_pop_pct['Race'] = df_pop_pct['Race'].str.replace('Population - ', '').str.replace(' Non-Latinx', '')
+df_pop_pct['Race'] = df_pop_pct['Race'].str.replace('Population - ', '').str.replace(' Non-Latinx', '').str.replace(' Percentage', ' (%)')
+
 
 # Filter to racial percentage of top 5 zip codes with most vacant lands
 df_pop_pct_top5 = df_pop_pct[df_pop_pct['zip'].isin(top5_zip_vacant['zip_code'])]
@@ -547,12 +589,12 @@ df_pop_pct_top5 = df_pop_pct[df_pop_pct['zip'].isin(top5_zip_vacant['zip_code'])
 alt.Chart(df_pop_pct_top5).mark_bar().encode(
     x=alt.X('zip:N', title='Zip Code'),
     y=alt.Y('Percentage:Q', title='Percentage of Population'),
-    color='Race:N',  # Stacking by Race
+    color=alt.Color('Race:N', scale=alt.Scale(scheme='set2')), 
     tooltip=['zip:N', 'Race:N', 'Percentage:Q']
 ).properties(
     width=600,
     height=400,
-    title='Racial Composition of Top 5 Zip Codes with most vacant lands'
+    title='Racial Composition of Top 5 Zip Codes with Most Vacant Lots'
 )
 ```
 
