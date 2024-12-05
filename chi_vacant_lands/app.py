@@ -10,11 +10,11 @@ alt.data_transformers.disable_max_rows()
 
 # UI Layout
 app_ui = ui.page_fluid(
-    ui.panel_title("Crime Rate Map Viewer"),
+    ui.panel_title("Vacant Land Distribution and Socioeconomic Features in Chicago"),
     ui.layout_sidebar(
         ui.sidebar(
             ui.input_select(
-                "data_selection", "Select Data:", choices=["Crime Rate", "Income", "Unemployment", "Business Density"]
+                "data_selection", "Select Data:", choices=["Crime Rate", "Income", "Unemployment", "Business Density", "Population"]
             )
         )
     ),
@@ -46,6 +46,11 @@ def server(input, output, session):
             with open('business_data.geojson') as f:
                 geojson_data = json.load(f)
             return geojson_data, "properties.business_density", "Business Denisty"
+        elif selected_data == "Population":
+            # Load the income GeoJSON
+            with open('population_data.geojson') as f:
+                geojson_data = json.load(f)
+            return geojson_data, "properties.total_population", "Population"
         return None, None, None
 
     @render_altair
