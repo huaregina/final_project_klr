@@ -933,6 +933,9 @@ combined_map_busn
 
 # merge population data with Chicago zip code shapefile
 gdf_pop = gdf_zip.merge(df_pop_2021, on='zip', how='left')
+
+# Save to GeoJSON
+#gdf_pop.to_file("population_data.geojson", driver="GeoJSON")
 ```
 ```{python}
 population_map = alt.Chart(gdf_pop
