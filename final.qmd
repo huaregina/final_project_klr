@@ -1032,16 +1032,11 @@ combined_map_pop
 • How do socioeconomic characteristics, population dynamics, and environmental factors interact in shaping the prevalence and impact of vacant lands in Chicago?
 
 ## Methodology and Data Source
-This study employs a systematic workflow to analyze vacant lands in Chicago. 
+Primary data sources include 1) city-owned vacant lands data from [the City of Chicago (COC)](https://www.chicago.gov/city/en/depts/dcd/supp_info/city-owned_land_inventory.html), 2) parcel data from [the Cook County Assessor’s Office (CCAO)](https://datacatalog.cookcountyil.gov/Property-Taxation/Assessor-Parcel-Universe/nj4t-kc8j/about_data), and 3) socioeconomic and demographic data from [the Chicago Data Portal](https://data.cityofchicago.org/) and related institutions. [According to the COC](https://www.chicago.gov/city/en/sites/block-builder/home/city-owned-land-inventory.html), if a vacant lot is not listed in the portal, it can be assumed not to be owned by the City. After cross-referencing COC and CCAO data, and other land data (like [the Institute for Housing Studies at DePaul University](https://housingstudies.org/releases/Data-Highlighting-ETOD-Implications-Vacant-Land/), and [ChiBlockBuider](https://chiblockbuilder.com/city-owned-lots/?)), we validated data accuracy and ensured consistency in the spatial distribution of different land types.
 
-Primary data sources include 1) city-owned vacant lands data from [the City of Chicago (COC)](https://www.chicago.gov/city/en/depts/dcd/supp_info/city-owned_land_inventory.html), 2) parcel data from [the Cook County Assessor’s Office (CCAO)](https://datacatalog.cookcountyil.gov/Property-Taxation/Assessor-Parcel-Universe/nj4t-kc8j/about_data), and 3) socioeconomic and demographic data from [the Chicago Data Portal](https://data.cityofchicago.org/) and related institutions. [According to the COC](https://www.chicago.gov/city/en/sites/block-builder/home/city-owned-land-inventory.html), if a vacant lot is not listed in the portal, it can be assumed not to be owned by the City. After cross-referencing COC data (9,981 entries), CCAO data (40,036 entries), and other land data (such as those from [the Institute for Housing Studies at DePaul University](https://housingstudies.org/releases/Data-Highlighting-ETOD-Implications-Vacant-Land/), and [ChiBlockBuider](https://chiblockbuilder.com/city-owned-lots/?)), we validated data accuracy and ensured consistency in the spatial distribution of different land types.
+After merging and deduplicating the primary land datasets, we performed data cleaning, including geospatial and land status verification, NA value handling, and key column formatting. Geographic identifiers such as zip codes and community area names were harmonized, and grouping operations were conducted to analyze relationships with socioeconomic and demographic factors. To optimize integration and performance in the Shiny app, the data was standardized to GeoJSON format.
 
-After merging and deduplicating the two primary land datasets, we performed unified data cleaning to prepare for subsequent analysis. 
-This included geospatial and land status verification, formatting adjustments for key columns, and handling of NA values across different columns. To analyze the relationships between vacant lands and various socioeconomic and demographic factors, we harmonized geographic identifiers, such as zip codes and community area names, and conducted grouping operations. For efficient integration into the Shiny app and to optimize runtime performance, we standardized the data format to GeoJSON.
-
-Geospatial analysis is performed using spatial mapping and clustering techniques to uncover patterns in the spatial distribution of vacant lands. 
-
-Finally, interactive visualization tools, including filters, tooltips, selectors, and toggles, are utilized to enhance data exploration and presentation.
+Geospatial analysis is performed using spatial mapping and clustering techniques to uncover patterns in the spatial distribution of vacant lands. Finally, interactive visualization tools, including filters, tooltips, selectors, and toggles, are utilized to enhance data exploration and presentation.
 
 ## Obstacles
 
@@ -1076,10 +1071,12 @@ The figure below reveals that 4 of the top 5 zip codes with the highest number o
 
 Our Shiny app features interactive choropleth maps displaying demographic and socioeconomic data, including crime rates, income levels, unemployment, business density, and population. Users can select the dataset to display using a drop-down menu. An additional key feature is a toggle that activates a scatterplot overlay of vacant lands. When enabled, users can adjust the scatter point size with a slider and choose to display city-owned lots, non-city-owned lots, or both. The app's primary purpose is to visualize the relationship between socioeconomic factors and the distribution of vacant lots on a map.
 
-### Policy Implications
+## Policy Implications
 1. The Shiny app analysis reveals that the presence of vacant lots is negatively correlated with income levels and business density, while showing a positive correlation with crime rates and unemployment. These findings indicate that communities with a high concentration of vacant lots face compounded socio-economic challenges, emphasizing the need for targeted urban planning and redevelopment initiatives to drive positive change.
 
 2. Our analysis shows that the majority of Chicago's vacant lots are owned by entities other than the city. To address this, the city could consider introducing programs or incentives that encourage private owners to effectively utilize their vacant land, fostering community development and economic growth.
+
+3. We also found that vacant lands tend to cluster near CTA lines, highlighting new opportunities to leverage transit assets to attract investment to transit-rich but underinvested areas. For example, these vacant lands could be utilized to build community convenience facilities.
 
 ## Future Work
 
@@ -1089,8 +1086,6 @@ Our Shiny app features interactive choropleth maps displaying demographic and so
 
 3. A case study could focus on the top five communities with the highest number of vacant lots, as well as those near transit hubs (e.g., within ½ mile of a CTA train station), to analyze underlying causes and propose targeted improvement strategies.
 
-4. Local Moran’s I cluster analysis could be applied to identify spatial clusters of vacant lands and assess the significance of these clusters in relation to surrounding socioeconomic factors.
+4. Local Moran’s I cluster analysis could be applied to identify spatial clusters of vacant lands and assess the significance of these clusters in relation to surrounding socioeconomic factors. By analyzing the spatial mean center of vacant lands over time, we could investigate geographic shifts and their implications for urban planning and policy.
 
 5. Regression models could be implemented to quantitatively analyze the relationship between vacant lands and various socioeconomic indicators.
-
-6. By analyzing the spatial mean center of vacant lands over time, we could investigate geographic shifts and their implications for urban planning and policy.
