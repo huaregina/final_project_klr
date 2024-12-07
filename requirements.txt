@@ -1,1 +1,8 @@
-
+pandas
+altair
+unittest
+geopandas
+shapely
+altair-saver
+numpy
+scipy
