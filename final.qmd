@@ -1058,24 +1058,21 @@ Finally, interactive visualization tools, including filters, tooltips, selectors
 ## Plotting and Policy Implications
 
 ### Static Plots 
-![All vacant lots](Slides/all_vacant_lots.png){width=250px}
-![Alt text](Slides/City_vacant_locations.png){width=250px}
-
-![](Slides/private_vacant_locations.png){width=250px}
-![Alt text](Slides/ctalines.png){width=250px}
-
+![All vacant lots](Slides/all_vacant_lots.png){width=210px}
+![Alt text](Slides/City_vacant_locations.png){width=210px}
+![Alt text](Slides/ctalines.png){width=210px}
 
 From the figures above, it is evident that vacant lots are predominantly concentrated in the west and south sides of Chicago. Analyzing ownership data reveals that 75% of these lots are privately owned, while the City of Chicago owns the remaining 25%. Furthermore, although vacant lots are primarily visible in the west and south, zip codes along CTA lines tend to have a higher density of vacant lots.
 
 ![Community area plots](Slides/community_plots.png)
 Englewood and West Englewood are the top two community areas in Chicago with the highest number of vacant lots, with Englewood having over 3,500 lots and West Englewood nearly 3,000. The bar chart on the right illustrates that in the 15 community areas with the most city-owned vacant lots, the average value of these lots is relatively low, with most valued below $20,000.
 
-![](Slides/Racial_Composition_of_Top_5.png){width=300px}
+The figure below reveals that 4 of the top 5 zip codes with the highest number of vacant lots are predominantly Black communities, with the remaining one being predominantly Latinx. This highlights a significant issue, as the concentration of vacant lots is disproportionately located in minority communities.
 
-The figure above reveals that 4 of the top 5 zip codes with the highest number of vacant lots are predominantly Black communities, with the remaining one being predominantly Latinx. This highlights a significant issue, as the concentration of vacant lots is disproportionately located in minority communities.
+![](Slides/Racial_Composition_of_Top_5.png){width=300px}
+![](Slides/shiny.png){width=300px}
 
 ### Shiny App
-![](Slides/shiny.png){width=400px}
 
 Our Shiny app features interactive choropleth maps displaying demographic and socioeconomic data, including crime rates, income levels, unemployment, business density, and population. Users can select the dataset to display using a drop-down menu. An additional key feature is a toggle that activates a scatterplot overlay of vacant lands. When enabled, users can adjust the scatter point size with a slider and choose to display city-owned lots, non-city-owned lots, or both. The app's primary purpose is to visualize the relationship between socioeconomic factors and the distribution of vacant lots on a map.
 
@@ -1085,3 +1082,15 @@ Our Shiny app features interactive choropleth maps displaying demographic and so
 2. Our analysis shows that the majority of Chicago's vacant lots are owned by entities other than the city. To address this, the city could consider introducing programs or incentives that encourage private owners to effectively utilize their vacant land, fostering community development and economic growth.
 
 ## Future Work
+
+1. The project currently relies on recent records (July 2023); with access to historical data, we could conduct temporal analyses to explore long-term trends and evolving spatial patterns.
+
+2. Expanding data sources would allow for a more comprehensive examination of the interaction between vacant land distribution and socioeconomic characteristics, including variables such as household income, median house prices, land use, unemployment rates, and housing market investments.
+
+3. A case study could focus on the top five communities with the highest number of vacant lots, as well as those near transit hubs (e.g., within ½ mile of a CTA train station), to analyze underlying causes and propose targeted improvement strategies.
+
+4. Local Moran’s I cluster analysis could be applied to identify spatial clusters of vacant lands and assess the significance of these clusters in relation to surrounding socioeconomic factors.
+
+5. Regression models could be implemented to quantitatively analyze the relationship between vacant lands and various socioeconomic indicators.
+
+6. By analyzing the spatial mean center of vacant lands over time, we could investigate geographic shifts and their implications for urban planning and policy.
