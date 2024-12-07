@@ -57,6 +57,7 @@ alt.data_transformers.disable_max_rows()
 
 # Load the property data in cook county
 # Because this is a large file, we saved in local path
+# or download from [the Cook County Assessor’s Office (CCAO)](https://datacatalog.cookcountyil.gov/Property-Taxation/Assessor-Parcel-Universe/nj4t-kc8j/about_data)
 data_cook_county = pd.read_csv('/Users/aa/Documents/Q4/data_cook_county.csv')
 
 # Filter only data in Chicago
@@ -88,6 +89,8 @@ data_chi_vacant.to_csv('./data/data_ccao.csv', index=False)
 ```{python}
 # Read in the data and merge
 df_ccao = pd.read_csv('./data/data_ccao.csv')
+
+# download from [the City of Chicago (COC)](https://www.chicago.gov/city/en/depts/dcd/supp_info/city-owned_land_inventory.html)
 df_coc = pd.read_csv('./data/df_city_owned.csv')
 ```
 
