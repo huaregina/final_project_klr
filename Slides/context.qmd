@@ -1,0 +1,60 @@
+---
+title: "Final Project Writeup: Vacant Lands in Chicago"
+author: "Liujun Hua, Katika Klinkaew, Liling Shen"
+date: "2024-12-5"
+format: 
+  pdf:
+    include-in-header: 
+       text: |
+         \usepackage{fvextra}
+         \DefineVerbatimEnvironment{Highlighting}{Verbatim}{breaklines,commandchars=\\\{\}}
+include-before-body:
+  text: |
+    \RecustomVerbatimEnvironment{verbatim}{Verbatim}{
+      showspaces = false,
+      showtabs = false,
+      breaksymbolleft={},
+      breaklines
+    }
+---
+Group Members:
+• Partner 1: **Liujun Hua** (cnetID), Section 3,
+• Partner 2: **Liling Shen** (liling), Section 3, SherlynLS
+• Partner 3: **Katika Klinkaew** (cnetID), Section 3,
+
+# 1 Research questions
+• What patterns characterize the spatial distribution of vacant lands in Chicago?
+• How do socioeconomic characteristics, population dynamics, and environmental factors interact in shaping the prevalence and impact of vacant lands in Chicago?
+
+# 2 Methodology and Data Source
+This study employs a systematic workflow to analyze vacant lands in Chicago. 
+
+Primary data sources include 1) city-owned vacant lands data from [the City of Chicago (COC)](https://www.chicago.gov/city/en/depts/dcd/supp_info/city-owned_land_inventory.html), 2) parcel data from [the Cook County Assessor’s Office (CCAO)](https://datacatalog.cookcountyil.gov/Property-Taxation/Assessor-Parcel-Universe/nj4t-kc8j/about_data), and 3) socioeconomic and demographic data from [the Chicago Data Portal](https://data.cityofchicago.org/) and related institutions. [According to the COC](https://www.chicago.gov/city/en/sites/block-builder/home/city-owned-land-inventory.html), if a vacant lot is not listed in the portal, it can be assumed not to be owned by the City. After cross-referencing COC data (9,981 entries), CCAO data (40,036 entries), and other land data (such as those from [the Institute for Housing Studies at DePaul University](https://housingstudies.org/releases/Data-Highlighting-ETOD-Implications-Vacant-Land/), and [ChiBlockBuider](https://chiblockbuilder.com/city-owned-lots/?)), we validated data accuracy and ensured consistency in the spatial distribution of different land types.
+
+After merging and deduplicating the two primary land datasets, we performed unified data cleaning to prepare for subsequent analysis. 
+This included geospatial and land status verification, formatting adjustments for key columns, and handling of NA values across different columns. To analyze the relationships between vacant lands and various socioeconomic and demographic factors, we harmonized geographic identifiers, such as zip codes and community area names, and conducted grouping operations. For efficient integration into the Shiny app and to optimize runtime performance, we standardized the data format to GeoJSON.
+
+Geospatial analysis is performed using spatial mapping and clustering techniques to uncover patterns in the spatial distribution of vacant lands. 
+
+Finally, interactive visualization tools, including filters, tooltips, selectors, and toggles, are utilized to enhance data exploration and presentation.
+
+# 3 Difficulties ecountered
+• **Data gaps**: The available open data on vacant lands is limited to recent records (July 2023) and primarily focuses on city-owned properties. Historical data was inaccessible despite attempts to obtain it via Chicago Cityscape and direct communication. This restriction prevented temporal analysis and the identification of long-term trends or patterns.
+• **Inconsistent geographic identifiers**: Datasets varied significantly in their geographic references, including zip codes, community area names, districts, police precincts, and geometry formats. The lack of uniformity complicated data integration. Spatial joins were used to map appropriate zip codes or community areas, with community areas retained due to the absence of authoritative mapping between zip codes and community areas.
+• **Common indicator alignment challenges**: Datasets with common indicators couldn't be found directly. To establish common metrics, we combined datasets through spatial joins or identified acceptable proxies. For example, crime rates were derived by merging crime reports with population data, and business density was approximated using the number of newly issued business licenses.
+• **Data format and performance issues**: Raw data was provided in various formats (GeoJSON, CSV, shapefiles, and text files), with some datasets exceeding 1.3 GB, leading to slow loading times. To address this, we grouped data during analysis and converted final datasets into GeoJSON for optimized readability and visualization.
+• **Socioeconomic data limitations**: The focus on a small geographic area, Chicago, and the use of fine-grained spatial divisions posed challenges in accessing corresponding socioeconomic data. For variables like housing prices, land values, and transaction activities, only aggregate data at the city or Illinois state level was available, limiting deeper exploration of the relationship between vacant lands and property values.
+
+# 4 Results (Plots and Shiny app)
+
+
+# 5 Policy Implication
+
+
+# 6 Future Work Discussion
+• The project currently relies on recent records (July 2023); with access to historical data, we could conduct temporal analyses to explore long-term trends and evolving spatial patterns.
+• Expanding data sources would allow for a more comprehensive examination of the interaction between vacant land distribution and socioeconomic characteristics, including variables such as household income, median house prices, land use, unemployment rates, and housing market investments.
+• A case study could focus on the top five communities with the highest number of vacant lots, as well as those near transit hubs (e.g., within ½ mile of a CTA train station), to analyze underlying causes and propose targeted improvement strategies.
+• Local Moran’s I cluster analysis could be applied to identify spatial clusters of vacant lands and assess the significance of these clusters in relation to surrounding socioeconomic factors.
+• Regression models could be implemented to quantitatively analyze the relationship between vacant lands and various socioeconomic indicators.
+• By analyzing the spatial mean center of vacant lands over time, we could investigate geographic shifts and their implications for urban planning and policy.
