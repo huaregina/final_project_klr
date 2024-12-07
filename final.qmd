@@ -1053,19 +1053,19 @@ Geospatial analysis is performed using spatial mapping and clustering techniques
 ## Plotting and Policy Implications
 
 ### Static Plots 
-![All vacant lots](Slides/all_vacant_lots.png){width=210px}
-![Alt text](Slides/City_vacant_locations.png){width=210px}
-![Alt text](Slides/ctalines.png){width=210px}
+![All vacant lots](pictures/all_vacant_lots.png){width=210px}
+![Alt text](pictures/City_vacant_locations.png){width=210px}
+![Alt text](pictures/ctalines.png){width=210px}
 
 From the figures above, it is evident that vacant lots are predominantly concentrated in the west and south sides of Chicago. Analyzing ownership data reveals that 75% of these lots are privately owned, while the City of Chicago owns the remaining 25%. Furthermore, although vacant lots are primarily visible in the west and south, zip codes along CTA lines tend to have a higher density of vacant lots.
 
-![Community area plots](Slides/community_plots.png)
+![Community area plots](pictures/community_plots.png)
 Englewood and West Englewood are the top two community areas in Chicago with the highest number of vacant lots, with Englewood having over 3,500 lots and West Englewood nearly 3,000. The bar chart on the right illustrates that in the 15 community areas with the most city-owned vacant lots, the average value of these lots is relatively low, with most valued below $20,000.
 
 The figure below reveals that 4 of the top 5 zip codes with the highest number of vacant lots are predominantly Black communities, with the remaining one being predominantly Latinx. This highlights a significant issue, as the concentration of vacant lots is disproportionately located in minority communities.
 
-![](Slides/Racial_Composition_of_Top_5.png){width=300px}
-![](Slides/shiny.png){width=300px}
+![](pictures/Racial_Composition_of_Top_5.png){width=300px}
+![](pictures/shiny.png){width=300px}
 
 ### Shiny App
 
